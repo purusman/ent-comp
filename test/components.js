@@ -63,6 +63,13 @@ tape('Adding and removing components', function(t) {
 	t.doesNotThrow(function() { ecs.removeComponent(id, comp.name) }, 'remove component')
 	t.throws(function() { ecs.removeComponent(id, comp.name) }, 'remove component twice')
 	t.false(ecs.hasComponent(id, comp.name), 'entity no longer has component')
+	
+	var id3
+	t.doesNotThrow(function() { id3 = ecs.createEntity([comp.name]) })
+	t.ok(ecs.hasComponent(id3, comp.name), 'component added at entity creation')
+	
+	t.doesNotThrow(function() { ecs.deleteEntity(id3) })
+	t.false(ecs.hasComponent(id3, comp.name), 'component removed when entity deleted')
 
 	t.end()
 })
@@ -106,7 +113,7 @@ tape('Component state data', function(t) {
 
 	ecs.removeComponent(id, comp.name)
 	t.throws(function() { ecs.getState(id, comp.name) }, 'getState after removing component')
-	
+
 	// passing in initial state
 	var id2 = ecs.createEntity()
 	ecs.addComponent(id2, comp.name, {
@@ -130,17 +137,17 @@ tape('Component states list', function(t) {
 	var ecs = new ECS()
 	t.throws(function() { ecs.getStatesList() }, 'bad getStatesList')
 	t.throws(function() { ecs.getStatesList('foo') }, 'bad getStatesList')
-	
+
 	var comp = {
 		name: 'foo',
 		state: { num: 23 }
 	}
 	ecs.createComponent(comp)
-	var arr	
+	var arr
 	t.doesNotThrow(function() { arr = ecs.getStatesList(comp.name) }, 'getStatesList without entities')
 	t.ok(arr, 'getStatesList result')
 	t.equals(arr.length, 0, 'getStatesList zero entities')
-	
+
 	var id = ecs.createEntity()
 	ecs.addComponent(id, comp.name)
 	t.doesNotThrow(function() { arr = ecs.getStatesList(comp.name) }, 'getStatesList with entities')

@@ -17,8 +17,10 @@ Creates a new entity-component-system manager.
 ## createEntity()
 
 Creates a new entity id. Currently just returns monotonically increasing integers.
+Optionally takes a list of component names to add to the entity (with default state data).
 
-	var id = ecs.createEntity()
+	var id1 = ecs.createEntity()
+	var id2 = ecs.createEntity([ 'my-component' ])
 
 ## deleteEntity()
 
@@ -85,6 +87,33 @@ Each one will have an `__id` property for which entity it refers to.
 	// returns something like:
 	//   [ { __id:0, num:1 },
 	//     { __id:7, num:6 }  ]
+
+## tick()
+
+Tells the ECS that a game tick has occurred, 
+causing component `render` processors to fire.
+
+	ecs.createComponent({
+		name: foo,
+		processor: function(dt, states) {
+			// states is an array of state objects
+		}
+	})
+	ecs.tick(30)
+
+## render()
+
+Functions exactly like, but calls renderProcessor functions.
+This gives a second set of processors, called at separate timing, 
+for games that tick and render in separate loops.
+
+	ecs.createComponent({
+		name: foo,
+		renderProcessor: function(dt, states) {
+			// states is an array of state objects
+		}
+	})
+	ecs.render(16.666)
 
 <!-- End ecs.js -->
 

@@ -28,10 +28,10 @@ function ECS() {
 	// public
 	this.components = {}
 	this.comps = this.components
-	
+
 	// internals
 	this._uid = 0
-	
+
 	/*!
 	Data structure:
 		ents.comps['foo'] = {
@@ -58,11 +58,19 @@ function ECS() {
 
 /**
  * Creates a new entity id. Currently just returns monotonically increasing integers.
+ * Optionally takes a list of component names to add to the entity (with default state data).
  * 
- * 	var id = ecs.createEntity()
+ * 	var id1 = ecs.createEntity()
+ * 	var id2 = ecs.createEntity([ 'my-component' ])
 */
-ECS.prototype.createEntity = function() {
-	return this._uid++
+ECS.prototype.createEntity = function(comps) {
+	var id = this._uid++
+	if (comps && comps.length) {
+		for (var i = 0; i < comps.length; i++) {
+			this.addComponent(id, comps[i])
+		}
+	}
+	return id
 }
 
 
@@ -75,8 +83,17 @@ ECS.prototype.createEntity = function() {
  * 	ecs.tick() // removal happens next tick
 */
 ECS.prototype.deleteEntity = function(entID) {
-	// TODO
 	
+	// TODO: defer removal until next tick/render/interval
+	
+	var keys = Object.keys(this._componentDataMap)
+	for (var i = 0; i < keys.length; i++) {
+		var compName = keys[i]
+		if (this._componentDataMap[compName].hasOwnProperty(entID)) {
+			this.removeComponent(entID, compName)
+		}
+	}
+
 }
 
 
@@ -99,6 +116,9 @@ ECS.prototype.createComponent = function(compDefn) {
 
 	if (!compDefn.state) compDefn.state = {}
 	this.components[name] = compDefn
+	
+	if (compDefn.processor) this._processors.push(name)
+	if (compDefn.renderProcessor) this._renderProcessors.push(name)
 
 	this._componentData[name] = []
 	this._componentDataMap[name] = {}
@@ -115,10 +135,19 @@ ECS.prototype.createComponent = function(compDefn) {
  * 	ecs.deleteComponent( comp.name )
  */
 ECS.prototype.deleteComponent = function(compName) {
-	if (!this.components[compName]) throw 'Component not found: ' + compName + '.'
+	var data = this._componentData[compName]
+	if (!data) throw 'Component not found: ' + compName + '.'
 
-	// TODO: remove components first
-
+	while (data.length) {
+		var id = data[data.length - 1].__id
+		this.removeComponent(id, compName)
+	}
+	
+	var i = this._processors.indexOf(compName)
+	if (i>-1) this._processors.splice(i,1)
+	i = this._renderProcessors.indexOf(compName)
+	if (i>-1) this._renderProcessors.splice(i,1)
+	
 	delete this.components[compName]
 	delete this._componentData[compName]
 	delete this._componentDataMap[compName]
@@ -138,10 +167,8 @@ ECS.prototype.addComponent = function(entID, compName, state) {
 	var def = this.components[compName]
 	var data = this._componentData[compName]
 	var map = this._componentDataMap[compName]
-	if (map.hasOwnProperty(entID)) throw 'Entity already has component: ' + compName + '.' 
+	if (map.hasOwnProperty(entID)) throw 'Entity already has component: ' + compName + '.'
 
-	// TODO: onAdd
-	
 	var newState = {}
 	extend(newState, def.state)
 	extend(newState, state)
@@ -149,6 +176,12 @@ ECS.prototype.addComponent = function(entID, compName, state) {
 
 	data.push(newState)
 	map[entID] = data.length - 1
+
+	if (def.onAdd) {
+		def.onAdd(entID, newState)
+	}
+
+
 	return this
 }
 
@@ -181,7 +214,9 @@ ECS.prototype.removeComponent = function(entID, compName) {
 	if (!map.hasOwnProperty(entID)) throw 'Entity does not have component: ' + compName + '.'
 	var id = map[entID]
 
-	// TODO: onRemove
+	if (def.onRemove) {
+		def.onRemove(entID, data[id])
+	}
 
 	if (data[id]) {
 		// fast splice - pop if at end, otherwise swap to end and pop, then fix map
@@ -244,11 +279,53 @@ ECS.prototype.getStatesList = function(compName) {
 
 
 
+/**
+ * Tells the ECS that a game tick has occurred, 
+ * causing component `render` processors to fire.
+ * 
+ * 	ecs.createComponent({
+ * 		name: foo,
+ * 		processor: function(dt, states) {
+ * 			// states is an array of state objects
+ * 		}
+ * 	})
+ * 	ecs.tick(30)
+ */
 
-
-ECS.prototype.update = function(dt) {
-	// this.ecs.update(dt)
+ECS.prototype.tick = function(dt) {
+	var procs = this._processors
+	for (var i=0; i<procs.length; ++i) {
+		var name = procs[i]
+		var proc = this.components[name].processor
+		var states = this._componentData[name]
+		if (states.length) proc(dt, states)
+	}
 }
 
+
+
+/**
+ * Functions exactly like, but calls renderProcessor functions.
+ * This gives a second set of processors, called at separate timing, 
+ * for games that tick and render in separate loops.
+ * 
+ * 	ecs.createComponent({
+ * 		name: foo,
+ * 		renderProcessor: function(dt, states) {
+ * 			// states is an array of state objects
+ * 		}
+ * 	})
+ * 	ecs.render(16.666)
+ */
+
+ECS.prototype.render = function(dt) {
+	var procs = this._renderProcessors
+	for (var i=0; i<procs.length; ++i) {
+		var name = procs[i]
+		var proc = this.components[name].renderProcessor
+		var states = this._componentData[name]
+		if (states.length) proc(dt, states)
+	}
+}
 
 
