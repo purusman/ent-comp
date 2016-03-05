@@ -14,9 +14,19 @@ Creates a new entity-component-system manager.
 	ecs.components   // hash of component objects, by name
 	ecs.comps        // alias of same
 
+## components
+
+Hash of component definitions. Also aliased to `comps`.
+
+	var comp = { name: 'foo' }
+	ecs.createComponent(comp)
+	ecs.components['foo'] === comp // true
+	ecs.comps['foo'] // same
+
 ## createEntity()
 
-Creates a new entity id. Currently just returns monotonically increasing integers.
+Creates a new entity id (currently just an incrementing integer).
+
 Optionally takes a list of component names to add to the entity (with default state data).
 
 	var id1 = ecs.createEntity()
@@ -25,7 +35,9 @@ Optionally takes a list of component names to add to the entity (with default st
 ## deleteEntity()
 
 Deletes an entity, which in practice just means removing all its components.
-By default the actual removal is deferred (since entities will tend to call this during event handlers, etc).
+By default the actual removal is deferred (since entities will tend to call this 
+on themselves during event handlers, etc).
+
 The second optional parameter forces immediate removal.
 
 	ecs.deleteEntity(id)
@@ -33,10 +45,16 @@ The second optional parameter forces immediate removal.
 
 ## createComponent()
 
-Creates a new component from a definition object.
+Creates a new component from a definition object. 
+The definition must have a `name` property; all others are optional.
 
 	var comp = {
-		name: 'a-unique-string'
+		name: 'a-unique-string',
+		state: {},
+		onAdd: function(id, state){ },
+		onRemove: function(id, state){ },
+		processor: function(dt, states){ },
+		renderProcessor: function(dt, states){ },
 	}
 	ecs.createComponent( comp )
 
@@ -51,32 +69,53 @@ First removes the component from all entities that have it.
 
 Adds a component to an entity, optionally initializing the state object.
 
-	ecs.addComponent(id, 'comp-name', {val:20})
+	ecs.createComponent({
+		name: 'foo',
+		state: { val: 0 }
+	})
+	ecs.addComponent(id, 'foo', {val:20})
+	ecs.getState(id, 'foo').val // 20
 
 ## hasComponent()
 
 Checks if an entity has a component.
 
-	ecs.hasComponent(id, 'comp-name')
-	// returns true or false
+	ecs.addComponent(id, 'foo')
+	ecs.hasComponent(id, 'foo') // true
 
 ## removeComponent()
 
 Removes a component from an entity, deleting any state data.
 
-	ecs.removeComponent(id, 'comp-name')
+	ecs.removeComponent(id, 'foo')
+	ecs.hasComponent(id, 'foo') // false
 
 ## getState()
 
 Get the component state for a given entity.
-It will automatically be populated with an extra `__id` property denoting the entity id.
+It will automatically be populated with an `__id` property denoting the entity id.
 
 	ecs.createComponent({
 		name: 'foo',
-		state: { num: 1 }
+		state: { val: 0 }
 	})
 	ecs.addComponent(id, 'foo')
-	ecs.getState(id, 'foo').num = 2
+	ecs.getState(id, 'foo').val // 0
+	ecs.getState(id, 'foo').__id // equals id
+
+## getStateAccessor()
+
+Returns a `getState`-like accessor function bound to a given component name. 
+The accessor is much faster than `getState`, so you should create an accessor 
+for any component whose state you'll be accessing a lot.
+
+	ecs.createComponent({
+		name: 'foo',
+		state: { val: 0 }
+	})
+	ecs.addComponent(id, 'foo')
+	var accessor = ecs.getStateAccessor('foo')
+	accessor(id).val // 0
 
 ## getStatesList()
 
@@ -96,21 +135,21 @@ causing component `render` processors to fire.
 	ecs.createComponent({
 		name: foo,
 		processor: function(dt, states) {
-			// states is an array of state objects
+			// states is the same array you'd get from #getStatesList()
 		}
 	})
 	ecs.tick(30)
 
 ## render()
 
-Functions exactly like, but calls renderProcessor functions.
-This gives a second set of processors, called at separate timing, 
-for games that tick and render in separate loops.
+Functions exactly like, but calls `renderProcessor` functions.
+This gives a second set of processors, called at separate timing, for games that 
+[tick and render in separate loops](http://gafferongames.com/game-physics/fix-your-timestep/).
 
 	ecs.createComponent({
 		name: foo,
 		renderProcessor: function(dt, states) {
-			// states is an array of state objects
+			// states is the same array you'd get from #getStatesList()
 		}
 	})
 	ecs.render(16.666)

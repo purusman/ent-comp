@@ -12,6 +12,11 @@ tape('Creating and deleting components', function(t) {
 	t.throws(function() { ecs.createComponent({}) })
 	t.throws(function() { ecs.deleteComponent() })
 	t.throws(function() { ecs.deleteComponent('foo') })
+	t.throws(function() { ecs.createComponent({ name: null }) }, 'Bad component names')
+	t.throws(function() { ecs.createComponent({ name: '' }) })
+	t.throws(function() { ecs.createComponent({ name: 5 }) })
+	t.throws(function() { ecs.createComponent({ name: true }) })
+	t.throws(function() { ecs.createComponent({ name: {} }) })
 
 	t.doesNotThrow(function() {
 		ecs.createComponent(comp)
@@ -19,6 +24,8 @@ tape('Creating and deleting components', function(t) {
 
 	t.ok(ecs.components[comp.name], 'component exists')
 	t.ok(ecs.comps[comp.name], 'comps alias works')
+	t.equals(comp, ecs.components[comp.name])
+	t.equals(comp, ecs.comps[comp.name])
 
 	t.throws(function() {
 		ecs.deleteComponent(comp)
@@ -70,6 +77,48 @@ tape('Adding and removing components', function(t) {
 
 	t.doesNotThrow(function() { ecs.deleteEntity(id3, true) })
 	t.false(ecs.hasComponent(id3, comp.name), 'component removed when entity deleted')
+
+	t.end()
+})
+
+
+
+tape('Nontrivial add/remove sequence', function(t) {
+	var comp = {
+		name: 'foo',
+		state: { num: -1 }
+	}
+	var ecs = new ECS()
+	ecs.createComponent(comp)
+	var ids = []
+	for (var i = 0; i < 5; i++) ids.push(ecs.createEntity())
+	function getState() {
+		var s = ''
+		for (var i = 0; i < 5; i++) {
+			if (ecs.hasComponent(ids[i], comp.name)){
+				s += ecs.getState(ids[i], comp.name).num
+			} else {
+				s += '-'
+			}
+		}
+		return s
+	}
+	
+	t.equals('-----', getState())
+	ecs.addComponent(ids[1], comp.name, {num:1})
+	ecs.addComponent(ids[2], comp.name, {num:2})
+	ecs.addComponent(ids[3], comp.name, {num:3})
+	t.equals('-123-', getState())
+	ecs.removeComponent(ids[3], comp.name)
+	ecs.addComponent(ids[4], comp.name, {num:4})
+	ecs.removeComponent(ids[1], comp.name)
+	ecs.addComponent(ids[0], comp.name, {num:0})
+	t.equals('0-2-4', getState())
+	ecs.addComponent(ids[3], comp.name, {num:3})
+	ecs.removeComponent(ids[4], comp.name)
+	ecs.addComponent(ids[1], comp.name, {num:1})
+	ecs.removeComponent(ids[0], comp.name)
+	t.equals('-123-', getState())
 
 	t.end()
 })
@@ -178,7 +227,7 @@ tape('Component state accessor', function(t) {
 	t.equals(state, undefined, 'bad entity returns undefined state')
 	t.doesNotThrow(function() { state = accessor(123) }, 'accessor with bad entity')
 	t.equals(state, undefined, 'bad entity returns undefined state')
-	
+
 	var id = ecs.createEntity()
 	ecs.addComponent(id, comp.name)
 	t.doesNotThrow(function() { state = accessor(id) }, 'accessor with correct entity')
