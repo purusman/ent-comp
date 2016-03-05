@@ -1,6 +1,6 @@
 {
   "name": "ent-comp",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "A light, fast Entity Component System in JS",
   "main": "ECS.js",
   "scripts": {
@@ -18,8 +18,8 @@
   "author": "Andy Hall",
   "license": "MIT",
   "repository": {
-    "type" : "git",
-    "url" : "https://github.com/andyhall/ent-comp"
+    "type": "git",
+    "url": "https://github.com/andyhall/ent-comp"
   },
   "devDependencies": {
     "benchmark": "^2.1.0",
