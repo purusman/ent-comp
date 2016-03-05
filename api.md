@@ -25,11 +25,11 @@ Optionally takes a list of component names to add to the entity (with default st
 ## deleteEntity()
 
 Deletes an entity, which in practice just means removing all its components.
-The actual removal is deferred until before the next tick, since 
-entities will tend to call this on themselves during event handlers, etc.
+By default the actual removal is deferred (since entities will tend to call this during event handlers, etc).
+The second optional parameter forces immediate removal.
 
 	ecs.deleteEntity(id)
-	ecs.tick() // removal happens next tick
+	ecs.deleteEntity(id2, true) // deletes immediately
 
 ## createComponent()
 

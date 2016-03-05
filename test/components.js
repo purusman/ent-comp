@@ -68,7 +68,7 @@ tape('Adding and removing components', function(t) {
 	t.doesNotThrow(function() { id3 = ecs.createEntity([comp.name]) })
 	t.ok(ecs.hasComponent(id3, comp.name), 'component added at entity creation')
 	
-	t.doesNotThrow(function() { ecs.deleteEntity(id3) })
+	t.doesNotThrow(function() { ecs.deleteEntity(id3, true) })
 	t.false(ecs.hasComponent(id3, comp.name), 'component removed when entity deleted')
 
 	t.end()

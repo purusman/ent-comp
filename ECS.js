@@ -49,9 +49,10 @@ function ECS() {
 
 	this._componentData = {}
 	this._componentDataMap = {}
-
+	
 	this._processors = []
 	this._renderProcessors = []
+	this._deferredRemovals = []
 }
 
 
@@ -76,24 +77,38 @@ ECS.prototype.createEntity = function(comps) {
 
 /**
  * Deletes an entity, which in practice just means removing all its components.
- * The actual removal is deferred until before the next tick, since 
- * entities will tend to call this on themselves during event handlers, etc.
+ * By default the actual removal is deferred (since entities will tend to call this during event handlers, etc).
+ * The second optional parameter forces immediate removal.
  * 
  * 	ecs.deleteEntity(id)
- * 	ecs.tick() // removal happens next tick
+ * 	ecs.deleteEntity(id2, true) // deletes immediately
 */
-ECS.prototype.deleteEntity = function(entID) {
-	
-	// TODO: defer removal until next tick/render/interval
-	
-	var keys = Object.keys(this._componentDataMap)
+ECS.prototype.deleteEntity = function(entID, immediately) {
+	if (immediately) {
+		deleteEntityNow(this, entID)
+	} else {
+		var self = this
+		if (this._deferredRemovals.length === 0) {
+			setTimeout(function() { deferredRemoval(self) }, 1)
+		}
+		this._deferredRemovals.push(entID)
+	}
+}
+
+function deferredRemoval(ecs) {
+	while(ecs._deferredRemovals.length) {
+		deleteEntityNow(ecs, ecs._deferredRemovals.pop())
+	}
+}
+
+function deleteEntityNow(ecs, entID) {
+	var keys = Object.keys(ecs._componentDataMap)
 	for (var i = 0; i < keys.length; i++) {
 		var compName = keys[i]
-		if (this._componentDataMap[compName].hasOwnProperty(entID)) {
-			this.removeComponent(entID, compName)
+		if (ecs._componentDataMap[compName].hasOwnProperty(entID)) {
+			ecs.removeComponent(entID, compName)
 		}
 	}
-
 }
 
 
@@ -293,6 +308,7 @@ ECS.prototype.getStatesList = function(compName) {
  */
 
 ECS.prototype.tick = function(dt) {
+	deferredRemoval(this)
 	var procs = this._processors
 	for (var i=0; i<procs.length; ++i) {
 		var name = procs[i]
@@ -319,6 +335,7 @@ ECS.prototype.tick = function(dt) {
  */
 
 ECS.prototype.render = function(dt) {
+	deferredRemoval(this)
 	var procs = this._renderProcessors
 	for (var i=0; i<procs.length; ++i) {
 		var name = procs[i]

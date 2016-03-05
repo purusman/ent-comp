@@ -79,7 +79,7 @@ tape('Component event cases', function(t) {
 	ecs.removeComponent(id1, comp.name)
 	t.equals(removed, 1)
 	ecs.addComponent(id1, comp.name)
-	ecs.deleteEntity(id1)
+	ecs.deleteEntity(id1, true) // delete immediately
 	t.equals(removed, 2, 'comp onRemove fired when entity deleted')
 	ecs.deleteComponent(comp.name)
 	t.equals(removed, 3, 'comp onRemove fired when component deleted')
