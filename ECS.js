@@ -196,7 +196,6 @@ ECS.prototype.addComponent = function(entID, compName, state) {
 		def.onAdd(entID, newState)
 	}
 
-
 	return this
 }
 
@@ -264,15 +263,37 @@ ECS.prototype.removeComponent = function(entID, compName) {
  */
 
 ECS.prototype.getState = function(entID, compName) {
-	var map = this._componentDataMap[compName]
-	if (!map) throw 'Component not found: ' + compName + '.'
-	if (!map.hasOwnProperty(entID)) throw 'Entity does not have component: ' + compName + '.'
 	var data = this._componentData[compName]
+	if (!data) throw 'Component not found: ' + compName + '.'
+	var map = this._componentDataMap[compName]
 	return data[map[entID]]
 }
 
 
 
+/**
+ * Returns a `getState`-like accessor function bound to a given component. 
+ * The accessor is much faster than `getState`, so you should create an accessor 
+ * for any component whose state you'll be accessing a lot.
+ * 
+ * 	ecs.createComponent({
+ * 		name: 'foo',
+ * 		state: { num: 1 }
+ * 	})
+ * 	ecs.addComponent(id, 'foo')
+ * 	var accessor = ecs.getStateAccessor('foo')
+ * 	var num = accessor(id).num // 1  
+ */
+
+
+ECS.prototype.getStateAccessor = function(compName) {
+	var data = this._componentData[compName]
+	var map = this._componentDataMap[compName]
+	if (!data || !map) throw 'Component not found: ' + compName + '.'
+	return function(entID) {
+		return data[map[entID]]
+	}
+}
 
 
 

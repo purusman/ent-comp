@@ -63,11 +63,11 @@ tape('Adding and removing components', function(t) {
 	t.doesNotThrow(function() { ecs.removeComponent(id, comp.name) }, 'remove component')
 	t.throws(function() { ecs.removeComponent(id, comp.name) }, 'remove component twice')
 	t.false(ecs.hasComponent(id, comp.name), 'entity no longer has component')
-	
+
 	var id3
 	t.doesNotThrow(function() { id3 = ecs.createEntity([comp.name]) })
 	t.ok(ecs.hasComponent(id3, comp.name), 'component added at entity creation')
-	
+
 	t.doesNotThrow(function() { ecs.deleteEntity(id3, true) })
 	t.false(ecs.hasComponent(id3, comp.name), 'component removed when entity deleted')
 
@@ -96,9 +96,11 @@ tape('Component state data', function(t) {
 
 	t.throws(function() { ecs.getState() })
 	t.throws(function() { ecs.getState(id + 37) })
-	t.throws(function() { ecs.getState(id + 37, comp.name) })
-
 	var state
+	t.doesNotThrow(function() { state = ecs.getState(id + 37, comp.name) }, 'getState is okay with bad entity')
+	t.equals(state, undefined, 'getState with bad entity is undefined')
+
+
 	t.doesNotThrow(function() { state = ecs.getState(id, comp.name) }, 'getState')
 	t.ok(state, 'state returned')
 	t.equals(state.num, comp.state.num, 'state property num')
@@ -112,7 +114,7 @@ tape('Component state data', function(t) {
 	t.equals(comp.state.num, 1, 'definition state not overwritten')
 
 	ecs.removeComponent(id, comp.name)
-	t.throws(function() { ecs.getState(id, comp.name) }, 'getState after removing component')
+	t.equals(ecs.getState(id, comp.name), undefined, 'getState undefined after removing component')
 
 	// passing in initial state
 	var id2 = ecs.createEntity()
@@ -154,6 +156,34 @@ tape('Component states list', function(t) {
 	t.ok(arr, 'getStatesList result')
 	t.equals(arr.length, 1, 'getStatesList entities')
 	t.equals(arr[0].num, 23, 'getStatesList state data')
+
+	t.end()
+})
+
+
+tape('Component state accessor', function(t) {
+	var ecs = new ECS()
+	t.throws(function() { ecs.getStateAccessor() }, 'bad accessor name')
+	t.throws(function() { ecs.getStateAccessor('foo') }, 'bad accessor name')
+
+	var comp = {
+		name: 'foo',
+		state: { num: 23 }
+	}
+	ecs.createComponent(comp)
+	var accessor
+	t.doesNotThrow(function() { accessor = ecs.getStateAccessor(comp.name) }, 'create accessor')
+	var state
+	t.doesNotThrow(function() { state = accessor() }, 'accessor with bad entity')
+	t.equals(state, undefined, 'bad entity returns undefined state')
+	t.doesNotThrow(function() { state = accessor(123) }, 'accessor with bad entity')
+	t.equals(state, undefined, 'bad entity returns undefined state')
+	
+	var id = ecs.createEntity()
+	ecs.addComponent(id, comp.name)
+	t.doesNotThrow(function() { state = accessor(id) }, 'accessor with correct entity')
+	t.ok(state, 'state object from accessor')
+	t.equals(state.num, 23, 'state property from accessor')
 
 	t.end()
 })
