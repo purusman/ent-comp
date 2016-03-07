@@ -18,10 +18,6 @@ var extend = require('util')._extend
  * 
  * 	var ECS = require('ent-comp')
  * 	var ecs = new ECS()
- * 	
- * 	// properties:
- * 	ecs.components   // hash of component objects, by name
- * 	ecs.comps        // alias of same
 */
 
 function ECS() {
@@ -50,9 +46,9 @@ function ECS() {
 	//    }
 	this._data = Object.create(null)
 
-	// flat arrays of names of components with processors
-	this._processors = []
-	this._renderProcessors = []
+	// flat arrays of names of components with systems
+	this._systems = []
+	this._renderSystems = []
 
 	// list of entity IDs queued for deferred removal
 	this._deferredRemovals = []
@@ -83,8 +79,7 @@ ECS.prototype.createEntity = function(comps) {
  * Deletes an entity, which in practice just means removing all its components.
  * By default the actual removal is deferred (since entities will tend to call this 
  * on themselves during event handlers, etc).
- * 
- * The second optional parameter forces immediate removal.
+ * Pass a truthy second parameter to force immediate removal.
  * 
  * 	ecs.deleteEntity(id)
  * 	ecs.deleteEntity(id2, true) // deletes immediately
@@ -99,6 +94,7 @@ ECS.prototype.deleteEntity = function(entID, immediately) {
 		}
 		this._deferredRemovals.push(entID)
 	}
+	return this
 }
 
 function doDeferredRemoval(ecs) {
@@ -130,10 +126,10 @@ function deleteEntityNow(ecs, entID) {
  * 	var comp = {
  * 		name: 'a-unique-string',
  * 		state: {},
- * 		onAdd: function(id, state){ },
- * 		onRemove: function(id, state){ },
- * 		processor: function(dt, states){ },
- * 		renderProcessor: function(dt, states){ },
+ * 		onAdd:     function(id, state){ },
+ * 		onRemove:  function(id, state){ },
+ * 		system:       function(dt, states){ },
+ * 		renderSystem: function(dt, states){ },
  * 	}
  * 	ecs.createComponent( comp )
 */
@@ -148,8 +144,8 @@ ECS.prototype.createComponent = function(compDefn) {
 	if (!compDefn.state) compDefn.state = {}
 	this.components[name] = compDefn
 
-	if (compDefn.processor) this._processors.push(name)
-	if (compDefn.renderProcessor) this._renderProcessors.push(name)
+	if (compDefn.system) this._systems.push(name)
+	if (compDefn.renderSystem) this._renderSystems.push(name)
 
 	this._data[name] = {
 		list: [],
@@ -166,7 +162,7 @@ ECS.prototype.createComponent = function(compDefn) {
 
 
 /**
- * Deletes the component with the given name. 
+ * Deletes the component definition with the given name. 
  * First removes the component from all entities that have it.
  * 
  * 	ecs.deleteComponent( comp.name )
@@ -181,14 +177,14 @@ ECS.prototype.deleteComponent = function(compName) {
 		this.removeComponent(entID, compName)
 	}
 
-	var i = this._processors.indexOf(compName)
-	if (i > -1) this._processors.splice(i, 1)
-	i = this._renderProcessors.indexOf(compName)
-	if (i > -1) this._renderProcessors.splice(i, 1)
+	var i = this._systems.indexOf(compName)
+	if (i > -1) this._systems.splice(i, 1)
+	i = this._renderSystems.indexOf(compName)
+	if (i > -1) this._renderSystems.splice(i, 1)
 
 	delete this.components[compName]
 	delete this._data[compName]
-	return this // TODO
+	return this
 }
 
 
@@ -240,11 +236,8 @@ ECS.prototype.hasComponent = function(entID, compName) {
 	if (!data) throw 'Unknown component: ' + compName + '.'
 	return !!data.hash[entID]
 }
-ECS.prototype.hasComponent2 = function(entID, compName) {
-	var data = this._data[compName]
-	if (!data) throw 'Unknown component: ' + compName + '.'
-	return !!data.hash[entID]
-}
+
+
 
 
 /**
@@ -332,8 +325,8 @@ ECS.prototype.getStateAccessor = function(compName) {
  * 
  * 	var arr = ecs.getStatesList('foo')
  * 	// returns something like:
- * 	//   [ { __id:0, num:1 },
- * 	//     { __id:7, num:6 }  ]  
+ * 	//   [ { __id:0, stateVar:1 },
+ * 	//     { __id:7, stateVar:6 }  ]  
  */
 
 ECS.prototype.getStatesList = function(compName) {
@@ -345,39 +338,45 @@ ECS.prototype.getStatesList = function(compName) {
 
 
 /**
- * Tells the ECS that a game tick has occurred, 
- * causing component `render` processors to fire.
+ * Tells the ECS that a game tick has occurred, causing component `system` functions to get called.
+ * 
+ * The optional parameter simply gets passed to the system functions. It's meant to be a 
+ * timestep, but can be used (or not used) as you like.    
  * 
  * 	ecs.createComponent({
  * 		name: foo,
- * 		processor: function(dt, states) {
+ * 		system: function(dt, states) {
  * 			// states is the same array you'd get from #getStatesList()
+ * 			console.log(states.length)
  * 		}
  * 	})
- * 	ecs.tick(30)
+ * 	ecs.tick(30) // triggers log statement 
  */
 
 ECS.prototype.tick = function(dt) {
 	doDeferredRemoval(this)
-	var procs = this._processors
-	for (var i = 0; i < procs.length; ++i) {
-		var name = procs[i]
-		var proc = this.components[name].processor
+	var systems = this._systems
+	for (var i = 0; i < systems.length; ++i) {
+		var name = systems[i]
+		var sys = this.components[name].system
 		var list = this._data[name].list
-		if (list.length) proc(dt, list)
+		if (list.length) sys(dt, list)
 	}
+	return this
 }
 
 
 
 /**
- * Functions exactly like, but calls `renderProcessor` functions.
- * This gives a second set of processors, called at separate timing, for games that 
- * [tick and render in separate loops](http://gafferongames.com/game-physics/fix-your-timestep/).
+ * Functions exactly like `tick`, but calls `renderSystem` functions.
+ * This effectively gives you a second set of systems that are 
+ * called with separate timing, in case you want to  
+ * [tick and render in separate loops](http://gafferongames.com/game-physics/fix-your-timestep/)
+ * (and you should!).
  * 
  * 	ecs.createComponent({
  * 		name: foo,
- * 		renderProcessor: function(dt, states) {
+ * 		renderSystem: function(dt, states) {
  * 			// states is the same array you'd get from #getStatesList()
  * 		}
  * 	})
@@ -386,13 +385,14 @@ ECS.prototype.tick = function(dt) {
 
 ECS.prototype.render = function(dt) {
 	doDeferredRemoval(this)
-	var procs = this._renderProcessors
-	for (var i = 0; i < procs.length; ++i) {
-		var name = procs[i]
-		var proc = this.components[name].renderProcessor
+	var systems = this._renderSystems
+	for (var i = 0; i < systems.length; ++i) {
+		var name = systems[i]
+		var sys = this.components[name].renderSystem
 		var list = this._data[name].list
-		if (list.length) proc(dt, list)
+		if (list.length) sys(dt, list)
 	}
+	return this
 }
 
 

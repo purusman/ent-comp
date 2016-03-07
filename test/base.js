@@ -52,3 +52,34 @@ tape('Entities', function(t) {
 })
 
 
+tape('Chaining', function(t) {
+	var ecs = new ECS()
+	var id = ecs.createEntity()
+	var res
+	
+	res = ecs.createComponent({ name: 'foo'})
+	t.equals(res, ecs, 'Instance returned for chaining calls')
+	
+	res = ecs.addComponent(id, 'foo')
+	t.equals(res, ecs, 'chainable addComponent')
+	
+	res = ecs.removeComponent(id, 'foo')
+	t.equals(res, ecs, 'chainable removeComponent')
+	
+	res = ecs.deleteComponent('foo')
+	t.equals(res, ecs, 'chainable deleteComponent')
+	
+	res = ecs.deleteEntity(id)
+	t.equals(res, ecs, 'chainable deleteEntity')
+	
+	res = ecs.tick()
+	t.equals(res, ecs, 'chainable tick')
+	
+	res = ecs.render()
+	t.equals(res, ecs, 'chainable render')
+	
+	t.end()
+})
+
+
+

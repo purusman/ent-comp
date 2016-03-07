@@ -88,18 +88,18 @@ tape('Component event cases', function(t) {
 })
 
 
-tape('Processors', function(t) {
+tape('Systems', function(t) {
 	var obj = {}
 	var comp = {
 		name: 'foo',
 		state: { num: 5 },
-		processor: function(dt, states) {
+		system: function(dt, states) {
 			obj.dt = dt
 			obj.ct = states.length
 			obj.total = 0
 			for (var i = 0; i < states.length; i++) obj.total += states[i].num
 		},
-		renderProcessor: function(dt, states) {
+		renderSystem: function(dt, states) {
 			obj.rdt = dt
 			obj.rct = states.length
 			obj.rtotal = 0
@@ -113,25 +113,25 @@ tape('Processors', function(t) {
 	t.doesNotThrow(function() { ecs.render(123) })
 
 	ecs.createComponent(comp)
-	t.doesNotThrow(function() { ecs.tick() }, 'processor with no entities')
+	t.doesNotThrow(function() { ecs.tick() }, 'system with no entities')
 	t.doesNotThrow(function() { ecs.tick(123) })
 	t.false(obj.hasOwnProperty('dt'))
 
 	var id1 = ecs.createEntity([comp.name])
 	ecs.tick(37)
-	t.equals(obj.dt, 37, 'processor properties')
+	t.equals(obj.dt, 37, 'system properties')
 	t.equals(obj.ct, 1)
 	t.equals(obj.total, 5)
 
 	var id2 = ecs.createEntity([comp.name])
 	ecs.tick(38)
-	t.equals(obj.dt, 38, 'processor properties')
+	t.equals(obj.dt, 38, 'system properties')
 	t.equals(obj.ct, 2)
 	t.equals(obj.total, 10)
 
 	ecs.removeComponent(id1, comp.name)
 	ecs.render(39)
-	t.equals(obj.rdt, 39, 'renderProcessor properties')
+	t.equals(obj.rdt, 39, 'renderSystem properties')
 	t.equals(obj.rct, 1)
 	t.equals(obj.rtotal, 5)
 
