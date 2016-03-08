@@ -212,7 +212,7 @@ tape('Component states list', function(t) {
 
 tape('Component state accessor', function(t) {
 	var ecs = new ECS()
-	t.throws(function() { ecs.getStateAccessor() }, 'bad accessor name')
+	t.throws(function() { ecs.getStateAccessor() }, 'bad state accessor name')
 	t.throws(function() { ecs.getStateAccessor('foo') }, 'bad accessor name')
 
 	var comp = {
@@ -233,6 +233,30 @@ tape('Component state accessor', function(t) {
 	t.doesNotThrow(function() { state = accessor(id) }, 'accessor with correct entity')
 	t.ok(state, 'state object from accessor')
 	t.equals(state.num, 23, 'state property from accessor')
+
+	t.end()
+})
+
+
+tape('hasComponent accessor', function(t) {
+	var ecs = new ECS()
+	t.throws(function() { ecs.getComponentAccessor() }, 'bad Comp accessor name')
+	t.throws(function() { ecs.getComponentAccessor('foo') }, 'bad accessor name')
+
+	var comp = { name: 'foo' }
+	ecs.createComponent(comp)
+	var accessor
+	t.doesNotThrow(function() { accessor = ecs.getComponentAccessor(comp.name) }, 'create Has accessor')
+	var has
+	t.doesNotThrow(function() { has = accessor() }, 'accessor with no entity')
+	t.equals(has, false, 'has == false for bad identity')
+	t.doesNotThrow(function() { has = accessor(123) }, 'accessor with bad entity')
+	t.equals(has, false, 'has == false for bad identity')
+
+	var id = ecs.createEntity()
+	ecs.addComponent(id, comp.name)
+	t.doesNotThrow(function() { has = accessor(id) }, 'accessor with real entity')
+	t.ok(has, 'correct result from accessor')
 
 	t.end()
 })

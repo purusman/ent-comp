@@ -234,7 +234,7 @@ ECS.prototype.addComponent = function(entID, compName, state) {
 ECS.prototype.hasComponent = function(entID, compName) {
 	var data = this._data[compName]
 	if (!data) throw 'Unknown component: ' + compName + '.'
-	return !!data.hash[entID]
+	return (data.hash[entID] !== undefined)
 }
 
 
@@ -301,12 +301,12 @@ ECS.prototype.getState = function(entID, compName) {
  * for any component whose state you'll be accessing a lot.
  * 
  * 	ecs.createComponent({
- * 		name: 'foo',
+ * 		name: 'size',
  * 		state: { val: 0 }
  * 	})
- * 	ecs.addComponent(id, 'foo')
- * 	var accessor = ecs.getStateAccessor('foo')
- * 	accessor(id).val // 0  
+ * 	ecs.addComponent(id, 'size')
+ * 	var getSize = ecs.getStateAccessor('size')
+ * 	getSize(id).val // 0  
  */
 
 ECS.prototype.getStateAccessor = function(compName) {
@@ -316,6 +316,28 @@ ECS.prototype.getStateAccessor = function(compName) {
 		return hash[entID]
 	}
 }
+
+
+
+/**
+ * Returns a `hasComponent`-like accessor function bound to a given component name. 
+ * The accessor is much faster than `hasComponent`.
+ * 
+ * 	ecs.createComponent({
+ * 		name: 'foo',
+ * 	})
+ * 	ecs.addComponent(id, 'foo')
+ * 	var hasFoo = ecs.getComponentAccessor('foo')
+ * 	hasFoo(id) // true  
+ */
+
+ECS.prototype.getComponentAccessor = function(compName) {
+	if (!this._data[compName]) throw 'Unknown component: ' + compName + '.'
+	var hash = this._data[compName].hash
+	return function(entID) {
+		return (hash[entID] !== undefined)
+	}
+}	
 
 
 

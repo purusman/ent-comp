@@ -41,12 +41,18 @@ var name = comp.name
 
 /***********************************  SUITES  ************************************/
 
-
-
 suite.add('loop over hasComponent', function() {
 	sum = 0
 	for (var i = 0; i < ids.length; ++i) {
 		if (ecs.hasComponent(ids[i], name)) sum++
+	}
+})
+
+var hasComp = ecs.getComponentAccessor(name)
+suite.add('loop via getComponentAccessor', function() {
+	sum = 0
+	for (var i = 0; i < ids.length; i += 2) {
+		if (hasComp(ids[i])) sum++
 	}
 })
 
