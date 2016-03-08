@@ -238,3 +238,35 @@ tape('Component state accessor', function(t) {
 })
 
 
+
+tape('Complex state objects', function(t) {
+	var ecs = new ECS()
+	
+	function MyClass() { }
+	var comp = {
+		name: 'foo',
+		state: {
+			primitive: 1,
+			obj: {}
+		}
+	}
+	ecs.createComponent(comp)
+	
+	var id1 = ecs.createEntity([comp.name])
+	var id2 = ecs.createEntity([comp.name])
+	var state1 = ecs.getState(id1, comp.name)
+	var state2 = ecs.getState(id2, comp.name)
+	state2.primitive = 2
+	
+	t.notEquals(state1.primitive, state2.primitive, 'State properties - primitives')
+	t.equals(state1.obj, state2.obj, 'State properties - objects')
+	state1.obj.foo = 1
+	t.equals(state2.obj.foo, 1) // !!!
+
+	t.end()
+})
+
+
+
+
+

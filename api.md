@@ -9,10 +9,6 @@ Creates a new entity-component-system manager.
 
 	var ECS = require('ent-comp')
 	var ecs = new ECS()
-	
-	// properties:
-	ecs.components   // hash of component objects, by name
-	ecs.comps        // alias of same
 
 ## components
 
@@ -37,8 +33,7 @@ Optionally takes a list of component names to add to the entity (with default st
 Deletes an entity, which in practice just means removing all its components.
 By default the actual removal is deferred (since entities will tend to call this 
 on themselves during event handlers, etc).
-
-The second optional parameter forces immediate removal.
+Pass a truthy second parameter to force immediate removal.
 
 	ecs.deleteEntity(id)
 	ecs.deleteEntity(id2, true) // deletes immediately
@@ -51,16 +46,16 @@ The definition must have a `name` property; all others are optional.
 	var comp = {
 		name: 'a-unique-string',
 		state: {},
-		onAdd: function(id, state){ },
-		onRemove: function(id, state){ },
-		processor: function(dt, states){ },
-		renderProcessor: function(dt, states){ },
+		onAdd:     function(id, state){ },
+		onRemove:  function(id, state){ },
+		system:       function(dt, states){ },
+		renderSystem: function(dt, states){ },
 	}
 	ecs.createComponent( comp )
 
 ## deleteComponent()
 
-Deletes the component with the given name. 
+Deletes the component definition with the given name. 
 First removes the component from all entities that have it.
 
 	ecs.deleteComponent( comp.name )
@@ -124,31 +119,36 @@ Each one will have an `__id` property for which entity it refers to.
 
 	var arr = ecs.getStatesList('foo')
 	// returns something like:
-	//   [ { __id:0, num:1 },
-	//     { __id:7, num:6 }  ]
+	//   [ { __id:0, stateVar:1 },
+	//     { __id:7, stateVar:6 }  ]
 
 ## tick()
 
-Tells the ECS that a game tick has occurred, 
-causing component `render` processors to fire.
+Tells the ECS that a game tick has occurred, causing component `system` functions to get called.
+
+The optional parameter simply gets passed to the system function. It's meant to be a 
+timestep value but can be used (or not used) as you like.    
 
 	ecs.createComponent({
 		name: foo,
-		processor: function(dt, states) {
+		system: function(dt, states) {
 			// states is the same array you'd get from #getStatesList()
+			console.log(states.length)
 		}
 	})
-	ecs.tick(30)
+	ecs.tick(30) // triggers log statement
 
 ## render()
 
-Functions exactly like, but calls `renderProcessor` functions.
-This gives a second set of processors, called at separate timing, for games that 
-[tick and render in separate loops](http://gafferongames.com/game-physics/fix-your-timestep/).
+Functions exactly like `tick`, but calls `renderSystem` functions.
+This effectively gives you a second set of systems that are 
+called with separate timing, in case you want to  
+[tick and render in separate loops](http://gafferongames.com/game-physics/fix-your-timestep/)
+(and you should!).
 
 	ecs.createComponent({
 		name: foo,
-		renderProcessor: function(dt, states) {
+		renderSystem: function(dt, states) {
 			// states is the same array you'd get from #getStatesList()
 		}
 	})
