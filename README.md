@@ -1,75 +1,205 @@
 # ent-comp
 
-A light, fast, slightly opinionated entity-component system in Javascript.
+A light, *fast* entity-component system in Javascript.
 
-## Features
+## Overview
 
-Coming soon.
+An [Entity Component System](http://vasir.net/blog/game-development/how-to-build-entity-component-system-in-javascript) 
+(ECS) is a programming construct that solves a very common 
+problem in game programming - it lets you model lots of interacting systems 
+whose entities cannot easily be described with OO-style inheritance.
+
+This library is the distilled result of my playing with a bunch of ECS libraries,
+removing what wasn't useful, and rejiggering what remained to perform well in the 
+most important cases. Specifically it's tuned to be fast at accessing the state of a given entity/component, 
+and looping over all states for a given component. 
+
+To get started, check the usage examples below, or the [API reference](api.md).
 
 ## Installation:
 
-	npm install ent-comp
+To use as a dependency:
 
-## To use:
+	npm install --save-dev ent-comp
 
-	var ECS = require('ent-comp')
-    
-	var ecs = new ECS()
-	
-	// make components
-	ecs.createComponent({
-		name: 'hit-points',
-		state: { hp: 100 },
-		processor: function(dt) { /* ... */ }
-	})
-	
-	// make an entity and give it a component
-	var id = ecs.createEntity()
-	ecs.addComponent(id, 'hit-points')
-	
-	// check its component state
-	ecs.getState(id, 'hit-points').hp // 100
-	
-	// calling tick causes processor functions to execute
-	ecs.tick( dt )
-	ecs.tickRender( dt )
+To hack on it:
 
-See the [API reference](api.md) for details.
-
-## Component definition object:
-
-Component definitions look like this:
-
-	var comp = {
-		name: 'any string',  // only required property
-		state: {
-			// default state object
-		},
-		onAdd: function(entID, state) {
-			// called when this component is added to an entity
-		},
-		onRemove: function(entID, state) {
-			// called when this component is removed from an entity
-		},
-		processor: function(dt, states) {
-			// called each time ECS#tick is called.
-			// "states" is the same array you'd get if you called
-			//   ecs.getStatesList() on this component
-		},
-		renderProcessor: function(dt, states) {
-			// same as above, but called each render rather than tick
-		}
-	} 
-
-## For developers:
-
+	git clone https://github.com/andyhall/ent-comp.git
 	cd ent-comp
 	npm install
-	npm test        # run tests
-	npm run bench   # run benchmarks
-	npm run doc     # rebuild API docs
+	npm test         # run tests
+	npm run bench    # run benchmarks
+	npm run doc      # rebuild API docs
 
-### Author: Andy Hall
+## Basic usage:
+
+Create the ECS, entities, and components thusly:
+
+	var EntComp = require('ent-comp')
+	var ecs = new EntComp()
+
+	// Entities are simply integer IDs:
+	var playerID = ecs.createEntity() // 0
+	var monsterID = ecs.createEntity() // 1
+	
+	// components are defined with a definition object:
+	ecs.createComponent({
+		name: 'isPlayer'
+	})
+	
+	// component definitions can be accessed by name
+	ecs.components['isPlayer']  // returns the definition object
+
+Once you have some entities and components, you can add them, remove them, and check their existence:
+
+	ecs.addComponent(playerID, 'isPlayer')
+	ecs.hasComponent(playerID, 'isPlayer') // true
+	
+	ecs.removeComponent(playerID, 'isPlayer')
+	ecs.hasComponent(playerID, 'isPlayer') // false
+	
+	// when creating an entity you can pass in an array of components to add
+	var id = ecs.createEntity([ 'isPlayer', 'other-component' ]) 
+
+The trivial example above implements a flag-like component, that can only be set or unset.
+Most real components will also need to manage some data for each entity. This is done by
+giving the component a `state` object, and using the `#getState` method. 
+
+	// component with state object
+	ecs.createComponent({
+		name: 'location',
+		state: { x:0, y:0, z:0 },
+	})
+	
+	// give the player entity a location component
+	ecs.addComponent(playerID, 'location')
+	
+	// grab its state to update its data
+	var loc = ecs.getState(playerID, 'location')
+	loc.y = 37
+	
+	// you can also pass in initial state values when adding a component:
+	ecs.addComponent(monsterID, 'location', { y: 42 })
+	ecs.getState(monsterID, 'location').y // 42
+
+When a component is added to an entity, its state object is automatically populated with 
+an `__id` property denoting the entity's ID. 
+
+	loc.__id // same as playerID
+
+Components can also have `onAdd` and `onRemove` properties, which get called 
+as any entity gains or loses the component.
+
+	ecs.createComponent({
+		name: 'orientation',
+		state: { angle:0 },
+		onAdd: function(id, state) {
+			// initialize to a random direction
+			state.angle = 360 * Math.random()
+		},
+		onRemove: function(id, state) {
+			console.log('orientation removed from entity '+id)
+		}
+	})
+
+Finally, components can define `system` and/or `renderSystem` functions. 
+When your game ticks or renders, call the appropriate library methods, 
+and each component system function will get passed a list of state objects
+for all the entities that have that component.
+
+	ecs.createComponent({
+		name: 'hitPoints',
+		state: { hp: 100 },
+		system: function(dt, states) {
+			// states is an array of entity state objects
+			for (var i=0; i<states.length; i++) {
+				if (states[i].hp <= 0) // an entity died!
+			}
+		},
+		renderSystem: function(dt, states) {
+			for (var i=0; i<states.length; i++) {
+				var id = states[i].__id
+				var hp = states[i].hp
+				drawTheEntityHitpoints(id, hp) 
+			}
+		},
+	})
+	
+	// calling tick/render triggers the systems
+	ecs.tick( tick_time )
+	ecs.tickRender( render_time )
+
+See the [API reference](api.md) for details on each method.
+
+
+## Further usage:
+
+If you need to query certain components many times each frame, you can create 
+bound accessor functions to get the existence or state of a given component.
+These accessors will perform a bit faster than `getState` and `hasComponent`.
+
+	var hasLocation = ecs.getComponentAccessor('location')
+	hasLocation(playerID) // true
+	
+	var getLocation = ecs.getStateAccessor('location')
+	getLocation(playerID) === loc // true
+
+
+There's also an API for getting an array of state objects for a given component.
+Though if you find yourself using this, you might want to just define a system instead.
+
+	var states = ecs.getStatesList('hitPoints')
+	// returns the same array that gets passed to system functions
+
+
+## Caveat about complex state objects:
+
+When you add a component to an entity, a new state object is created for that ent/comp pair. 
+This new state object is a **shallow copy** of the component's default state, not a duplicate or deep clone. 
+This means any non-primitive state properties will be copied by reference.
+
+What this means to you is, state objects containing nested objects or arrays 
+probably won't do what you intended. For example:
+
+	ecs.createComponent({
+		name: 'foo',
+		state: {
+			vector3: [0,0,0]
+		}
+	})
+
+If you create a bunch of new entities with that component, their state objects will all 
+contain references to *the same array*. You probably want each to have its own.
+The right way to achieve this is by initializing non-primitives in the `onAdd` handler:
+
+	ecs.createComponent({
+		name: 'foo',
+		state: {
+			vector3: null
+		},
+		onAdd: function(id, state) {
+			if (!state.vector3) state.vector3 = [0,0,0]
+		}
+	})
+
+Testing for the value before overwriting means that you can pass in an initial
+value when adding the component, and it will still do what you expect:
+
+	ecs.addComponent(id, 'foo', { vector3: [1,1,1] })
+
+
+## Things this library doesn't do:
+
+ 1. Assemblages. I can't for the life of me see how they add any value. 
+ If I'm missing something please file an issue.
+ 
+ 2. Provide any way of querying which entities have components A and B, but not C, and so on.
+ If you need this, I think maintaining your own lists will be faster 
+ (and probably easier to use) than anything the library could do automatically.
+
+----
+
+### Author: https://github.com/andyhall
 
 ### License: MIT
 

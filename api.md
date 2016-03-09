@@ -105,12 +105,24 @@ The accessor is much faster than `getState`, so you should create an accessor
 for any component whose state you'll be accessing a lot.
 
 	ecs.createComponent({
-		name: 'foo',
+		name: 'size',
 		state: { val: 0 }
 	})
+	ecs.addComponent(id, 'size')
+	var getSize = ecs.getStateAccessor('size')
+	getSize(id).val // 0
+
+## getComponentAccessor()
+
+Returns a `hasComponent`-like accessor function bound to a given component name. 
+The accessor is much faster than `hasComponent`.
+
+	ecs.createComponent({
+		name: 'foo',
+	})
 	ecs.addComponent(id, 'foo')
-	var accessor = ecs.getStateAccessor('foo')
-	accessor(id).val // 0
+	var hasFoo = ecs.getComponentAccessor('foo')
+	hasFoo(id) // true
 
 ## getStatesList()
 
@@ -126,8 +138,8 @@ Each one will have an `__id` property for which entity it refers to.
 
 Tells the ECS that a game tick has occurred, causing component `system` functions to get called.
 
-The optional parameter simply gets passed to the system function. It's meant to be a 
-timestep value but can be used (or not used) as you like.    
+The optional parameter simply gets passed to the system functions. It's meant to be a 
+timestep, but can be used (or not used) as you like.    
 
 	ecs.createComponent({
 		name: foo,
