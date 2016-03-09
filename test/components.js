@@ -97,7 +97,7 @@ tape('Nontrivial add/remove sequence', function(t) {
 	function getState() {
 		var s = ''
 		for (var i = 0; i < 5; i++) {
-			if (ecs.hasComponent(ids[i], comp.name)){
+			if (ecs.hasComponent(ids[i], comp.name)) {
 				s += ecs.getState(ids[i], comp.name).num
 			} else {
 				s += '-'
@@ -105,20 +105,20 @@ tape('Nontrivial add/remove sequence', function(t) {
 		}
 		return s
 	}
-	
+
 	t.equals('-----', getState())
-	ecs.addComponent(ids[1], comp.name, {num:1})
-	ecs.addComponent(ids[2], comp.name, {num:2})
-	ecs.addComponent(ids[3], comp.name, {num:3})
+	ecs.addComponent(ids[1], comp.name, { num: 1 })
+	ecs.addComponent(ids[2], comp.name, { num: 2 })
+	ecs.addComponent(ids[3], comp.name, { num: 3 })
 	t.equals('-123-', getState())
 	ecs.removeComponent(ids[3], comp.name)
-	ecs.addComponent(ids[4], comp.name, {num:4})
+	ecs.addComponent(ids[4], comp.name, { num: 4 })
 	ecs.removeComponent(ids[1], comp.name)
-	ecs.addComponent(ids[0], comp.name, {num:0})
+	ecs.addComponent(ids[0], comp.name, { num: 0 })
 	t.equals('0-2-4', getState())
-	ecs.addComponent(ids[3], comp.name, {num:3})
+	ecs.addComponent(ids[3], comp.name, { num: 3 })
 	ecs.removeComponent(ids[4], comp.name)
-	ecs.addComponent(ids[1], comp.name, {num:1})
+	ecs.addComponent(ids[1], comp.name, { num: 1 })
 	ecs.removeComponent(ids[0], comp.name)
 	t.equals('-123-', getState())
 
@@ -267,7 +267,7 @@ tape('hasComponent accessor', function(t) {
 
 tape('Complex state objects', function(t) {
 	var ecs = new ECS()
-	
+
 	function MyClass() { }
 	var comp = {
 		name: 'foo',
@@ -277,13 +277,13 @@ tape('Complex state objects', function(t) {
 		}
 	}
 	ecs.createComponent(comp)
-	
+
 	var id1 = ecs.createEntity([comp.name])
 	var id2 = ecs.createEntity([comp.name])
 	var state1 = ecs.getState(id1, comp.name)
 	var state2 = ecs.getState(id2, comp.name)
 	state2.primitive = 2
-	
+
 	t.notEquals(state1.primitive, state2.primitive, 'State properties - primitives')
 	t.equals(state1.obj, state2.obj, 'State properties - objects')
 	state1.obj.foo = 1

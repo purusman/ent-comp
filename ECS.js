@@ -16,8 +16,10 @@ var extend = require('util')._extend
  * 
  * Creates a new entity-component-system manager.
  * 
- * 	var ECS = require('ent-comp')
- * 	var ecs = new ECS()
+ * ```js
+ * var ECS = require('ent-comp')
+ * var ecs = new ECS()
+ * ```
 */
 
 function ECS() {
@@ -26,10 +28,12 @@ function ECS() {
 	/** 
 	 * Hash of component definitions. Also aliased to `comps`.
 	 * 
-	 * 	var comp = { name: 'foo' }
-	 * 	ecs.createComponent(comp)
-	 * 	ecs.components['foo'] === comp // true
-	 * 	ecs.comps['foo'] // same
+	 * ```js
+	 * var comp = { name: 'foo' }
+	 * ecs.createComponent(comp)
+	 * ecs.components['foo'] === comp // true
+	 * ecs.comps['foo'] // same
+	 * ```
 	*/ 
 	this.components = Object.create(null)
 	this.comps = this.components
@@ -61,8 +65,10 @@ function ECS() {
  * 
  * Optionally takes a list of component names to add to the entity (with default state data).
  * 
- * 	var id1 = ecs.createEntity()
- * 	var id2 = ecs.createEntity([ 'my-component' ])
+ * ```js
+ * var id1 = ecs.createEntity()
+ * var id2 = ecs.createEntity([ 'my-component' ])
+ * ```
 */
 ECS.prototype.createEntity = function(comps) {
 	var id = this._uid++
@@ -81,8 +87,10 @@ ECS.prototype.createEntity = function(comps) {
  * on themselves during event handlers, etc).
  * Pass a truthy second parameter to force immediate removal.
  * 
- * 	ecs.deleteEntity(id)
- * 	ecs.deleteEntity(id2, true) // deletes immediately
+ * ```js
+ * ecs.deleteEntity(id)
+ * ecs.deleteEntity(id2, true) // deletes immediately
+ * ```
 */
 ECS.prototype.deleteEntity = function(entID, immediately) {
 	if (immediately) {
@@ -171,7 +179,9 @@ ECS.prototype.createComponent = function(compDefn) {
  * Deletes the component definition with the given name. 
  * First removes the component from all entities that have it.
  * 
- * 	ecs.deleteComponent( comp.name )
+ * ```js
+ * ecs.deleteComponent( comp.name )
+ * ```
  */
 ECS.prototype.deleteComponent = function(compName) {
 	var data = this._data[compName]
@@ -199,12 +209,14 @@ ECS.prototype.deleteComponent = function(compName) {
 /**
  * Adds a component to an entity, optionally initializing the state object.
  * 
- * 	ecs.createComponent({
- * 		name: 'foo',
- * 		state: { val: 0 }
- * 	})
- * 	ecs.addComponent(id, 'foo', {val:20})
- * 	ecs.getState(id, 'foo').val // 20
+ * ```js
+ * ecs.createComponent({
+ * 	name: 'foo',
+ * 	state: { val: 0 }
+ * })
+ * ecs.addComponent(id, 'foo', {val:20})
+ * ecs.getState(id, 'foo').val // 20
+ * ```
  */
 ECS.prototype.addComponent = function(entID, compName, state) {
 	var def = this.components[compName]
@@ -233,8 +245,10 @@ ECS.prototype.addComponent = function(entID, compName, state) {
 /**
  * Checks if an entity has a component.
  * 
- * 	ecs.addComponent(id, 'foo')
- * 	ecs.hasComponent(id, 'foo') // true
+ * ```js
+ * ecs.addComponent(id, 'foo')
+ * ecs.hasComponent(id, 'foo') // true
+ * ```
  */
 
 ECS.prototype.hasComponent = function(entID, compName) {
@@ -249,8 +263,10 @@ ECS.prototype.hasComponent = function(entID, compName) {
 /**
  * Removes a component from an entity, deleting any state data.
  * 
- * 	ecs.removeComponent(id, 'foo')
- * 	ecs.hasComponent(id, 'foo') // false
+ * ```js
+ * ecs.removeComponent(id, 'foo')
+ * ecs.hasComponent(id, 'foo') // false
+ * ```
  */
 ECS.prototype.removeComponent = function(entID, compName) {
 	var def = this.components[compName]
@@ -284,13 +300,15 @@ ECS.prototype.removeComponent = function(entID, compName) {
  * Get the component state for a given entity.
  * It will automatically be populated with an `__id` property denoting the entity id.
  * 
- * 	ecs.createComponent({
- * 		name: 'foo',
- * 		state: { val: 0 }
- * 	})
- * 	ecs.addComponent(id, 'foo')
- * 	ecs.getState(id, 'foo').val // 0
- * 	ecs.getState(id, 'foo').__id // equals id
+ * ```js
+ * ecs.createComponent({
+ * 	name: 'foo',
+ * 	state: { val: 0 }
+ * })
+ * ecs.addComponent(id, 'foo')
+ * ecs.getState(id, 'foo').val // 0
+ * ecs.getState(id, 'foo').__id // equals id
+ * ```
  */
 
 ECS.prototype.getState = function(entID, compName) {
@@ -306,13 +324,15 @@ ECS.prototype.getState = function(entID, compName) {
  * The accessor is much faster than `getState`, so you should create an accessor 
  * for any component whose state you'll be accessing a lot.
  * 
- * 	ecs.createComponent({
- * 		name: 'size',
- * 		state: { val: 0 }
- * 	})
- * 	ecs.addComponent(id, 'size')
- * 	var getSize = ecs.getStateAccessor('size')
- * 	getSize(id).val // 0  
+ * ```js
+ * ecs.createComponent({
+ * 	name: 'size',
+ * 	state: { val: 0 }
+ * })
+ * ecs.addComponent(id, 'size')
+ * var getSize = ecs.getStateAccessor('size')
+ * getSize(id).val // 0
+ * ```  
  */
 
 ECS.prototype.getStateAccessor = function(compName) {
@@ -329,12 +349,14 @@ ECS.prototype.getStateAccessor = function(compName) {
  * Returns a `hasComponent`-like accessor function bound to a given component name. 
  * The accessor is much faster than `hasComponent`.
  * 
- * 	ecs.createComponent({
- * 		name: 'foo',
- * 	})
- * 	ecs.addComponent(id, 'foo')
- * 	var hasFoo = ecs.getComponentAccessor('foo')
- * 	hasFoo(id) // true  
+ * ```js
+ * ecs.createComponent({
+ * 	name: 'foo',
+ * })
+ * ecs.addComponent(id, 'foo')
+ * var hasFoo = ecs.getComponentAccessor('foo')
+ * hasFoo(id) // true
+ * ```  
  */
 
 ECS.prototype.getComponentAccessor = function(compName) {
@@ -351,10 +373,12 @@ ECS.prototype.getComponentAccessor = function(compName) {
  * Get an array of state objects for every entity with the given component. 
  * Each one will have an `__id` property for which entity it refers to.
  * 
- * 	var arr = ecs.getStatesList('foo')
- * 	// returns something like:
- * 	//   [ { __id:0, stateVar:1 },
- * 	//     { __id:7, stateVar:6 }  ]  
+ * ```js
+ * var arr = ecs.getStatesList('foo')
+ * // returns something shaped like:
+ * //   [ { __id:0, stateVar:1 },
+ * //     { __id:7, stateVar:6 }  ]
+ * ```  
  */
 
 ECS.prototype.getStatesList = function(compName) {
@@ -371,14 +395,16 @@ ECS.prototype.getStatesList = function(compName) {
  * The optional parameter simply gets passed to the system functions. It's meant to be a 
  * timestep, but can be used (or not used) as you like.    
  * 
- * 	ecs.createComponent({
- * 		name: foo,
- * 		system: function(dt, states) {
- * 			// states is the same array you'd get from #getStatesList()
- * 			console.log(states.length)
- * 		}
- * 	})
- * 	ecs.tick(30) // triggers log statement 
+ * ```js
+ * ecs.createComponent({
+ * 	name: foo,
+ * 	system: function(dt, states) {
+ * 		// states is the same array you'd get from #getStatesList()
+ * 		console.log(states.length)
+ * 	}
+ * })
+ * ecs.tick(30) // triggers log statement
+ * ```
  */
 
 ECS.prototype.tick = function(dt) {
@@ -398,17 +424,19 @@ ECS.prototype.tick = function(dt) {
 /**
  * Functions exactly like `tick`, but calls `renderSystem` functions.
  * This effectively gives you a second set of systems that are 
- * called with separate timing, in case you want to  
+ * called with separate timing, in case you want to 
  * [tick and render in separate loops](http://gafferongames.com/game-physics/fix-your-timestep/)
  * (and you should!).
  * 
- * 	ecs.createComponent({
- * 		name: foo,
- * 		renderSystem: function(dt, states) {
- * 			// states is the same array you'd get from #getStatesList()
- * 		}
- * 	})
- * 	ecs.render(16.666)
+ * ```js
+ * ecs.createComponent({
+ * 	name: foo,
+ * 	renderSystem: function(dt, states) {
+ * 		// states is the same array you'd get from #getStatesList()
+ * 	}
+ * })
+ * ecs.render(16.666)
+ * ```
  */
 
 ECS.prototype.render = function(dt) {
