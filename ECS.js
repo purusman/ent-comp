@@ -123,15 +123,21 @@ function deleteEntityNow(ecs, entID) {
  * Creates a new component from a definition object. 
  * The definition must have a `name` property; all others are optional.
  * 
- * 	var comp = {
- * 		name: 'a-unique-string',
- * 		state: {},
- * 		onAdd:     function(id, state){ },
- * 		onRemove:  function(id, state){ },
- * 		system:       function(dt, states){ },
- * 		renderSystem: function(dt, states){ },
- * 	}
- * 	ecs.createComponent( comp )
+ * Returns the component name, to make it easy to grab when the component definition is 
+ * being `require`d from a module.
+ * 
+ * ```js
+ * var comp = {
+ * 	name: 'a-unique-string',
+ * 	state: {},
+ * 	onAdd:     function(id, state){ },
+ * 	onRemove:  function(id, state){ },
+ * 	system:       function(dt, states){ },
+ * 	renderSystem: function(dt, states){ },
+ * }
+ * var name = ecs.createComponent( comp )
+ * // name == 'a-unique-string'
+ * ```
 */
 ECS.prototype.createComponent = function(compDefn) {
 	if (!compDefn) throw 'Missing component definition'
@@ -153,7 +159,7 @@ ECS.prototype.createComponent = function(compDefn) {
 		map: Object.create(null),
 	}
 
-	return this
+	return name
 }
 
 

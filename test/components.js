@@ -18,9 +18,11 @@ tape('Creating and deleting components', function(t) {
 	t.throws(function() { ecs.createComponent({ name: true }) })
 	t.throws(function() { ecs.createComponent({ name: {} }) })
 
+	var result
 	t.doesNotThrow(function() {
-		ecs.createComponent(comp)
+		result = ecs.createComponent(comp)
 	}, 'createComponent')
+	t.equals(result, comp.name, 'createComponent returns name')
 
 	t.ok(ecs.components[comp.name], 'component exists')
 	t.ok(ecs.comps[comp.name], 'comps alias works')

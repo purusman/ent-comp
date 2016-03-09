@@ -56,9 +56,7 @@ tape('Chaining', function(t) {
 	var ecs = new ECS()
 	var id = ecs.createEntity()
 	var res
-	
-	res = ecs.createComponent({ name: 'foo'})
-	t.equals(res, ecs, 'Instance returned for chaining calls')
+	ecs.createComponent({ name: 'foo'})
 	
 	res = ecs.addComponent(id, 'foo')
 	t.equals(res, ecs, 'chainable addComponent')
