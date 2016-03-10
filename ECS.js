@@ -412,9 +412,9 @@ ECS.prototype.tick = function(dt) {
 	var systems = this._systems
 	for (var i = 0; i < systems.length; ++i) {
 		var name = systems[i]
-		var sys = this.components[name].system
 		var list = this._data[name].list
-		if (list.length) sys(dt, list)
+		var comp = this.components[name]
+		comp.system(dt, list)
 	}
 	return this
 }
@@ -444,9 +444,9 @@ ECS.prototype.render = function(dt) {
 	var systems = this._renderSystems
 	for (var i = 0; i < systems.length; ++i) {
 		var name = systems[i]
-		var sys = this.components[name].renderSystem
 		var list = this._data[name].list
-		if (list.length) sys(dt, list)
+		var comp = this.components[name]
+		comp.renderSystem(dt, list)
 	}
 	return this
 }

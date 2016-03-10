@@ -97,12 +97,14 @@ tape('Systems', function(t) {
 			obj.dt = dt
 			obj.ct = states.length
 			obj.total = 0
+			obj.name = this.name
 			for (var i = 0; i < states.length; i++) obj.total += states[i].num
 		},
 		renderSystem: function(dt, states) {
 			obj.rdt = dt
 			obj.rct = states.length
 			obj.rtotal = 0
+			obj.rname = this.name
 			for (var i = 0; i < states.length; i++) obj.rtotal += states[i].num
 		}
 	}
@@ -115,7 +117,8 @@ tape('Systems', function(t) {
 	ecs.createComponent(comp)
 	t.doesNotThrow(function() { ecs.tick() }, 'system with no entities')
 	t.doesNotThrow(function() { ecs.tick(123) })
-	t.false(obj.hasOwnProperty('dt'))
+	t.true(obj.hasOwnProperty('dt'), 'system fires with no entities')
+	t.equals(obj.name, comp.name, 'system executes in context of definition')
 
 	var id1 = ecs.createEntity([comp.name])
 	ecs.tick(37)
@@ -134,6 +137,8 @@ tape('Systems', function(t) {
 	t.equals(obj.rdt, 39, 'renderSystem properties')
 	t.equals(obj.rct, 1)
 	t.equals(obj.rtotal, 5)
+	t.true(obj.hasOwnProperty('rdt'), 'render system fires with no entities')
+	t.equals(obj.rname, comp.name, 'system executes in context of definition')
 
 	t.end()
 })
