@@ -232,7 +232,7 @@ ECS.prototype.addComponent = function(entID, compName, state) {
 
 	data.hash[entID] = newState
 	data.list.push(newState)
-	data.map[entID] = data.length - 1
+	data.map[entID] = data.list.length - 1
 
 	var def = this.components[compName]
 	if (def.onAdd) def.onAdd(entID, newState)
