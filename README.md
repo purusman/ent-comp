@@ -140,7 +140,7 @@ ecs.createComponent({
 
 // calling tick/render triggers the systems
 ecs.tick( tick_time )
-ecs.tickRender( render_time )
+ecs.render( render_time )
 ```
 
 See the [API reference](api.md) for details on each method.
