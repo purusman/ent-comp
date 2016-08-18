@@ -54,8 +54,10 @@ function ECS() {
 	this._systems = []
 	this._renderSystems = []
 
-	// list of entity IDs queued for deferred removal
+	// list of entity IDs queued for deferred deletion
 	this._deferredRemovals = []
+	// entity/component pairs for deferred removal
+	this._deferredCompRemovals = []
 }
 
 
@@ -106,6 +108,10 @@ ECS.prototype.deleteEntity = function(entID, immediately) {
 }
 
 function doDeferredRemoval(ecs) {
+	while (ecs._deferredCompRemovals.length) {
+		var pair = ecs._deferredCompRemovals.shift()
+		ecs.removeComponent(pair.ent, pair.comp)
+	}
 	while (ecs._deferredRemovals.length) {
 		deleteEntityNow(ecs, ecs._deferredRemovals.pop())
 	}
@@ -234,7 +240,6 @@ ECS.prototype.addComponent = function(entID, compName, state) {
 	data.list.push(newState)
 	data.map[entID] = data.list.length - 1
 
-	var def = this.components[compName]
 	if (def.onAdd) def.onAdd(entID, newState)
 
 	return this
@@ -288,6 +293,31 @@ ECS.prototype.removeComponent = function(entID, compName) {
 	}
 	delete data.hash[entID]
 	delete data.map[entID]
+
+	return this
+}
+
+
+
+/**
+ * Removes a component from an entity the next time `tick` or `render` is called.
+ * Useful for removing things from inside a loop processing them.
+ * 
+ * ```js
+ * ecs.removeComponentLater(id, 'foo')
+ * ```
+ */
+ECS.prototype.removeComponentLater = function(entID, compName) {
+	var def = this.components[compName]
+	var data = this._data[compName]
+	if (!data) throw 'Unknown component: ' + compName + '.'
+	if (!data.hash[entID]) throw 'Entity does not have component: ' + compName + '.'
+
+	// flag ent/comp combination for later removal
+	this._deferredCompRemovals.push({
+		comp: compName,
+		ent: entID
+	})
 
 	return this
 }

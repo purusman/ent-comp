@@ -107,6 +107,15 @@ ecs.removeComponent(id, 'foo')
 ecs.hasComponent(id, 'foo') // false
 ```
 
+## removeComponentLater()
+
+Removes a component from an entity the next time `tick` or `render` is called.
+Useful for removing things from inside a loop processing them.
+
+```js
+ecs.removeComponentLater(id, 'foo')
+```
+
 ## getState()
 
 Get the component state for a given entity.

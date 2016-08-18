@@ -127,6 +127,38 @@ tape('Nontrivial add/remove sequence', function(t) {
 
 
 
+tape('remove component later', function(t) {
+	var comp = { name: 'foo' }
+	var ecs = new ECS()
+	ecs.createComponent(comp)
+
+	var id = ecs.createEntity()
+	ecs.addComponent(id, comp.name)
+
+	t.throws(function() { ecs.removeComponentLater() })
+	t.throws(function() { ecs.removeComponentLater(id) })
+	t.throws(function() { ecs.removeComponentLater(id, 'bar') })
+
+	t.doesNotThrow(function() { ecs.removeComponentLater(id, comp.name) }, 'call removeComponentLater')
+	t.ok(ecs.hasComponent(id, comp.name), 'entity still has component')
+	
+	t.doesNotThrow(function() { ecs.tick() }, 'call tick')
+	t.false(ecs.hasComponent(id, comp.name), 'entity no longer has component')
+
+	ecs.addComponent(id, comp.name)
+	ecs.removeComponentLater(id, comp.name)
+	t.ok(ecs.hasComponent(id, comp.name), 'entity still has component')
+
+	t.doesNotThrow(function() { ecs.render() }, 'call render')
+	t.false(ecs.hasComponent(id, comp.name), 'entity no longer has component')
+
+	t.end()
+})
+
+
+
+
+
 tape('Component state data', function(t) {
 	var comp = {
 		name: 'foo',
