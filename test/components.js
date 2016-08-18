@@ -4,22 +4,22 @@ var ECS = require('..')
 var tape = require('tape')
 
 
-tape('Creating and deleting components', function(t) {
+tape('Creating and deleting components', function (t) {
 	var comp = { name: 'foo' }
 	var ecs = new ECS()
 
-	t.throws(function() { ecs.createComponent() })
-	t.throws(function() { ecs.createComponent({}) })
-	t.throws(function() { ecs.deleteComponent() })
-	t.throws(function() { ecs.deleteComponent('foo') })
-	t.throws(function() { ecs.createComponent({ name: null }) }, 'Bad component names')
-	t.throws(function() { ecs.createComponent({ name: '' }) })
-	t.throws(function() { ecs.createComponent({ name: 5 }) })
-	t.throws(function() { ecs.createComponent({ name: true }) })
-	t.throws(function() { ecs.createComponent({ name: {} }) })
+	t.throws(function () { ecs.createComponent() })
+	t.throws(function () { ecs.createComponent({}) })
+	t.throws(function () { ecs.deleteComponent() })
+	t.throws(function () { ecs.deleteComponent('foo') })
+	t.throws(function () { ecs.createComponent({ name: null }) }, 'Bad component names')
+	t.throws(function () { ecs.createComponent({ name: '' }) })
+	t.throws(function () { ecs.createComponent({ name: 5 }) })
+	t.throws(function () { ecs.createComponent({ name: true }) })
+	t.throws(function () { ecs.createComponent({ name: {} }) })
 
 	var result
-	t.doesNotThrow(function() {
+	t.doesNotThrow(function () {
 		result = ecs.createComponent(comp)
 	}, 'createComponent')
 	t.equals(result, comp.name, 'createComponent returns name')
@@ -29,11 +29,11 @@ tape('Creating and deleting components', function(t) {
 	t.equals(comp, ecs.components[comp.name])
 	t.equals(comp, ecs.comps[comp.name])
 
-	t.throws(function() {
+	t.throws(function () {
 		ecs.deleteComponent(comp)
 	}, 'cannot delete by object')
 
-	t.doesNotThrow(function() {
+	t.doesNotThrow(function () {
 		ecs.deleteComponent(comp.name)
 	}, 'deleteComponent by name')
 
@@ -44,40 +44,40 @@ tape('Creating and deleting components', function(t) {
 
 
 
-tape('Adding and removing components', function(t) {
+tape('Adding and removing components', function (t) {
 	var comp = { name: 'foo' }
 	var ecs = new ECS()
 	ecs.createComponent(comp)
 
-	t.throws(function() { ecs.addComponent() })
-	t.throws(function() { ecs.addComponent(37) })
-	t.throws(function() { ecs.addComponent(37, 'bar') })
+	t.throws(function () { ecs.addComponent() })
+	t.throws(function () { ecs.addComponent(37) })
+	t.throws(function () { ecs.addComponent(37, 'bar') })
 
 	var id = ecs.createEntity()
-	t.doesNotThrow(function() { ecs.addComponent(id, comp.name) }, 'add component')
-	t.throws(function() { ecs.addComponent(id, comp.name) }, 'add component twice')
+	t.doesNotThrow(function () { ecs.addComponent(id, comp.name) }, 'add component')
+	t.throws(function () { ecs.addComponent(id, comp.name) }, 'add component twice')
 
-	t.throws(function() { ecs.hasComponent(id) })
-	t.throws(function() { ecs.hasComponent(id, 'bar') })
+	t.throws(function () { ecs.hasComponent(id) })
+	t.throws(function () { ecs.hasComponent(id, 'bar') })
 	t.ok(ecs.hasComponent(id, comp.name), 'entity has component')
 
-	t.throws(function() { ecs.removeComponent() })
-	t.throws(function() { ecs.removeComponent(id) })
-	t.throws(function() { ecs.removeComponent(id, 'bar') })
+	t.throws(function () { ecs.removeComponent() })
+	t.throws(function () { ecs.removeComponent(id) })
+	t.throws(function () { ecs.removeComponent(id, 'bar') })
 
 	var id2 = ecs.createEntity()
-	t.doesNotThrow(function() { ecs.addComponent(id2, comp.name, { foo: 1 }) }, 'add component with state')
+	t.doesNotThrow(function () { ecs.addComponent(id2, comp.name, { foo: 1 }) }, 'add component with state')
 	t.ok(ecs.hasComponent(id2, comp.name))
 
-	t.doesNotThrow(function() { ecs.removeComponent(id, comp.name) }, 'remove component')
-	t.throws(function() { ecs.removeComponent(id, comp.name) }, 'remove component twice')
+	t.doesNotThrow(function () { ecs.removeComponent(id, comp.name) }, 'remove component')
+	t.throws(function () { ecs.removeComponent(id, comp.name) }, 'remove component twice')
 	t.false(ecs.hasComponent(id, comp.name), 'entity no longer has component')
 
 	var id3
-	t.doesNotThrow(function() { id3 = ecs.createEntity([comp.name]) })
+	t.doesNotThrow(function () { id3 = ecs.createEntity([comp.name]) })
 	t.ok(ecs.hasComponent(id3, comp.name), 'component added at entity creation')
 
-	t.doesNotThrow(function() { ecs.deleteEntity(id3, true) })
+	t.doesNotThrow(function () { ecs.deleteEntity(id3, true) })
 	t.false(ecs.hasComponent(id3, comp.name), 'component removed when entity deleted')
 
 	t.end()
@@ -85,7 +85,7 @@ tape('Adding and removing components', function(t) {
 
 
 
-tape('Nontrivial add/remove sequence', function(t) {
+tape('Nontrivial add/remove sequence', function (t) {
 	var comp = {
 		name: 'foo',
 		state: { num: -1 }
@@ -127,7 +127,7 @@ tape('Nontrivial add/remove sequence', function(t) {
 
 
 
-tape('remove component later', function(t) {
+tape('remove component later', function (t) {
 	var comp = { name: 'foo' }
 	var ecs = new ECS()
 	ecs.createComponent(comp)
@@ -135,21 +135,21 @@ tape('remove component later', function(t) {
 	var id = ecs.createEntity()
 	ecs.addComponent(id, comp.name)
 
-	t.throws(function() { ecs.removeComponentLater() })
-	t.throws(function() { ecs.removeComponentLater(id) })
-	t.throws(function() { ecs.removeComponentLater(id, 'bar') })
+	t.throws(function () { ecs.removeComponentLater() })
+	t.throws(function () { ecs.removeComponentLater(id) })
+	t.throws(function () { ecs.removeComponentLater(id, 'bar') })
 
-	t.doesNotThrow(function() { ecs.removeComponentLater(id, comp.name) }, 'call removeComponentLater')
+	t.doesNotThrow(function () { ecs.removeComponentLater(id, comp.name) }, 'call removeComponentLater')
 	t.ok(ecs.hasComponent(id, comp.name), 'entity still has component')
-	
-	t.doesNotThrow(function() { ecs.tick() }, 'call tick')
+
+	t.doesNotThrow(function () { ecs.tick() }, 'call tick')
 	t.false(ecs.hasComponent(id, comp.name), 'entity no longer has component')
 
 	ecs.addComponent(id, comp.name)
 	ecs.removeComponentLater(id, comp.name)
 	t.ok(ecs.hasComponent(id, comp.name), 'entity still has component')
 
-	t.doesNotThrow(function() { ecs.render() }, 'call render')
+	t.doesNotThrow(function () { ecs.render() }, 'call render')
 	t.false(ecs.hasComponent(id, comp.name), 'entity no longer has component')
 
 	t.end()
@@ -159,14 +159,14 @@ tape('remove component later', function(t) {
 
 
 
-tape('Component state data', function(t) {
+tape('Component state data', function (t) {
 	var comp = {
 		name: 'foo',
 		state: {
 			num: 1,
 			str: 'hoge',
 			arr: [1, 2, 3],
-			fcn: function() { },
+			fcn: function () { },
 			obj: {
 				num: 2
 			},
@@ -177,14 +177,14 @@ tape('Component state data', function(t) {
 	var id = ecs.createEntity()
 	ecs.addComponent(id, comp.name)
 
-	t.throws(function() { ecs.getState() })
-	t.throws(function() { ecs.getState(id + 37) })
+	t.throws(function () { ecs.getState() })
+	t.throws(function () { ecs.getState(id + 37) })
 	var state
-	t.doesNotThrow(function() { state = ecs.getState(id + 37, comp.name) }, 'getState is okay with bad entity')
+	t.doesNotThrow(function () { state = ecs.getState(id + 37, comp.name) }, 'getState is okay with bad entity')
 	t.equals(state, undefined, 'getState with bad entity is undefined')
 
 
-	t.doesNotThrow(function() { state = ecs.getState(id, comp.name) }, 'getState')
+	t.doesNotThrow(function () { state = ecs.getState(id, comp.name) }, 'getState')
 	t.ok(state, 'state returned')
 	t.equals(state.num, comp.state.num, 'state property num')
 	t.equals(state.str, comp.state.str, 'state property str')
@@ -218,10 +218,10 @@ tape('Component state data', function(t) {
 
 
 
-tape('Component states list', function(t) {
+tape('Component states list', function (t) {
 	var ecs = new ECS()
-	t.throws(function() { ecs.getStatesList() }, 'bad getStatesList')
-	t.throws(function() { ecs.getStatesList('foo') }, 'bad getStatesList')
+	t.throws(function () { ecs.getStatesList() }, 'bad getStatesList')
+	t.throws(function () { ecs.getStatesList('foo') }, 'bad getStatesList')
 
 	var comp = {
 		name: 'foo',
@@ -229,13 +229,13 @@ tape('Component states list', function(t) {
 	}
 	ecs.createComponent(comp)
 	var arr
-	t.doesNotThrow(function() { arr = ecs.getStatesList(comp.name) }, 'getStatesList without entities')
+	t.doesNotThrow(function () { arr = ecs.getStatesList(comp.name) }, 'getStatesList without entities')
 	t.ok(arr, 'getStatesList result')
 	t.equals(arr.length, 0, 'getStatesList zero entities')
 
 	var id = ecs.createEntity()
 	ecs.addComponent(id, comp.name)
-	t.doesNotThrow(function() { arr = ecs.getStatesList(comp.name) }, 'getStatesList with entities')
+	t.doesNotThrow(function () { arr = ecs.getStatesList(comp.name) }, 'getStatesList with entities')
 	t.ok(arr, 'getStatesList result')
 	t.equals(arr.length, 1, 'getStatesList entities')
 	t.equals(arr[0].num, 23, 'getStatesList state data')
@@ -244,10 +244,10 @@ tape('Component states list', function(t) {
 })
 
 
-tape('Component state accessor', function(t) {
+tape('Component state accessor', function (t) {
 	var ecs = new ECS()
-	t.throws(function() { ecs.getStateAccessor() }, 'bad state accessor name')
-	t.throws(function() { ecs.getStateAccessor('foo') }, 'bad accessor name')
+	t.throws(function () { ecs.getStateAccessor() }, 'bad state accessor name')
+	t.throws(function () { ecs.getStateAccessor('foo') }, 'bad accessor name')
 
 	var comp = {
 		name: 'foo',
@@ -255,16 +255,16 @@ tape('Component state accessor', function(t) {
 	}
 	ecs.createComponent(comp)
 	var accessor
-	t.doesNotThrow(function() { accessor = ecs.getStateAccessor(comp.name) }, 'create accessor')
+	t.doesNotThrow(function () { accessor = ecs.getStateAccessor(comp.name) }, 'create accessor')
 	var state
-	t.doesNotThrow(function() { state = accessor() }, 'accessor with bad entity')
+	t.doesNotThrow(function () { state = accessor() }, 'accessor with bad entity')
 	t.equals(state, undefined, 'bad entity returns undefined state')
-	t.doesNotThrow(function() { state = accessor(123) }, 'accessor with bad entity')
+	t.doesNotThrow(function () { state = accessor(123) }, 'accessor with bad entity')
 	t.equals(state, undefined, 'bad entity returns undefined state')
 
 	var id = ecs.createEntity()
 	ecs.addComponent(id, comp.name)
-	t.doesNotThrow(function() { state = accessor(id) }, 'accessor with correct entity')
+	t.doesNotThrow(function () { state = accessor(id) }, 'accessor with correct entity')
 	t.ok(state, 'state object from accessor')
 	t.equals(state.num, 23, 'state property from accessor')
 
@@ -272,24 +272,24 @@ tape('Component state accessor', function(t) {
 })
 
 
-tape('hasComponent accessor', function(t) {
+tape('hasComponent accessor', function (t) {
 	var ecs = new ECS()
-	t.throws(function() { ecs.getComponentAccessor() }, 'bad Comp accessor name')
-	t.throws(function() { ecs.getComponentAccessor('foo') }, 'bad accessor name')
+	t.throws(function () { ecs.getComponentAccessor() }, 'bad Comp accessor name')
+	t.throws(function () { ecs.getComponentAccessor('foo') }, 'bad accessor name')
 
 	var comp = { name: 'foo' }
 	ecs.createComponent(comp)
 	var accessor
-	t.doesNotThrow(function() { accessor = ecs.getComponentAccessor(comp.name) }, 'create Has accessor')
+	t.doesNotThrow(function () { accessor = ecs.getComponentAccessor(comp.name) }, 'create Has accessor')
 	var has
-	t.doesNotThrow(function() { has = accessor() }, 'accessor with no entity')
+	t.doesNotThrow(function () { has = accessor() }, 'accessor with no entity')
 	t.equals(has, false, 'has == false for bad identity')
-	t.doesNotThrow(function() { has = accessor(123) }, 'accessor with bad entity')
+	t.doesNotThrow(function () { has = accessor(123) }, 'accessor with bad entity')
 	t.equals(has, false, 'has == false for bad identity')
 
 	var id = ecs.createEntity()
 	ecs.addComponent(id, comp.name)
-	t.doesNotThrow(function() { has = accessor(id) }, 'accessor with real entity')
+	t.doesNotThrow(function () { has = accessor(id) }, 'accessor with real entity')
 	t.ok(has, 'correct result from accessor')
 
 	t.end()
@@ -297,7 +297,7 @@ tape('hasComponent accessor', function(t) {
 
 
 
-tape('Complex state objects', function(t) {
+tape('Complex state objects', function (t) {
 	var ecs = new ECS()
 
 	function MyClass() { }

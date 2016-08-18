@@ -4,12 +4,12 @@ var ECS = require('..')
 var tape = require('tape')
 
 
-tape('Component onAdd events', function(t) {
+tape('Component onAdd events', function (t) {
 	var called = false
 	var obj = {}
 	var comp = {
 		name: 'foo',
-		onAdd: function(eid, state) {
+		onAdd: function (eid, state) {
 			called = true
 			obj.id = eid
 			obj.num = state.num
@@ -19,7 +19,7 @@ tape('Component onAdd events', function(t) {
 	ecs.createComponent(comp)
 	var id = ecs.createEntity()
 
-	t.doesNotThrow(function() {
+	t.doesNotThrow(function () {
 		ecs.addComponent(id, comp.name, { num: 2 })
 	}, 'addComponent with onAdd')
 	t.ok(called, 'onAdd called')
@@ -29,12 +29,12 @@ tape('Component onAdd events', function(t) {
 	t.end()
 })
 
-tape('Component onRemove events', function(t) {
+tape('Component onRemove events', function (t) {
 	var called = false
 	var obj = {}
 	var comp = {
 		name: 'foo',
-		onRemove: function(eid, state) {
+		onRemove: function (eid, state) {
 			called = true
 			obj.id = eid
 			obj.num = state.num
@@ -45,7 +45,7 @@ tape('Component onRemove events', function(t) {
 	var id = ecs.createEntity()
 	ecs.addComponent(id, comp.name, { num: 2 })
 
-	t.doesNotThrow(function() {
+	t.doesNotThrow(function () {
 		ecs.removeComponent(id, comp.name, { num: 2 })
 	}, 'addComponent with onRemove')
 	t.ok(called, 'onRemove called')
@@ -55,13 +55,13 @@ tape('Component onRemove events', function(t) {
 	t.end()
 })
 
-tape('Component event cases', function(t) {
+tape('Component event cases', function (t) {
 	var added = 0
 	var removed = 0
 	var comp = {
 		name: 'foo',
-		onAdd: function(eid, state) { added++ },
-		onRemove: function(eid, state) { removed++ }
+		onAdd: function (eid, state) { added++ },
+		onRemove: function (eid, state) { removed++ }
 	}
 	var ecs = new ECS()
 	ecs.createComponent(comp)
@@ -72,7 +72,7 @@ tape('Component event cases', function(t) {
 	t.equals(added, 1)
 	ecs.addComponent(id1, comp.name)
 	t.equals(added, 2)
-	t.throws(function() { ecs.addComponent(id1, comp.name) })
+	t.throws(function () { ecs.addComponent(id1, comp.name) })
 	t.equals(added, 2)
 
 	t.equals(removed, 0)
@@ -88,19 +88,19 @@ tape('Component event cases', function(t) {
 })
 
 
-tape('Systems', function(t) {
+tape('Systems', function (t) {
 	var obj = {}
 	var comp = {
 		name: 'foo',
 		state: { num: 5 },
-		system: function(dt, states) {
+		system: function (dt, states) {
 			obj.dt = dt
 			obj.ct = states.length
 			obj.total = 0
 			obj.name = this.name
 			for (var i = 0; i < states.length; i++) obj.total += states[i].num
 		},
-		renderSystem: function(dt, states) {
+		renderSystem: function (dt, states) {
 			obj.rdt = dt
 			obj.rct = states.length
 			obj.rtotal = 0
@@ -109,14 +109,14 @@ tape('Systems', function(t) {
 		}
 	}
 	var ecs = new ECS()
-	t.doesNotThrow(function() { ecs.tick() }, 'tick with no components')
-	t.doesNotThrow(function() { ecs.tick(123) })
-	t.doesNotThrow(function() { ecs.render() }, 'render with no components')
-	t.doesNotThrow(function() { ecs.render(123) })
+	t.doesNotThrow(function () { ecs.tick() }, 'tick with no components')
+	t.doesNotThrow(function () { ecs.tick(123) })
+	t.doesNotThrow(function () { ecs.render() }, 'render with no components')
+	t.doesNotThrow(function () { ecs.render(123) })
 
 	ecs.createComponent(comp)
-	t.doesNotThrow(function() { ecs.tick() }, 'system with no entities')
-	t.doesNotThrow(function() { ecs.tick(123) })
+	t.doesNotThrow(function () { ecs.tick() }, 'system with no entities')
+	t.doesNotThrow(function () { ecs.tick(123) })
 	t.true(obj.hasOwnProperty('dt'), 'system fires with no entities')
 	t.equals(obj.name, comp.name, 'system executes in context of definition')
 

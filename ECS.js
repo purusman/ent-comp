@@ -24,7 +24,7 @@ var extend = require('util')._extend
 
 function ECS() {
 	// public properties:
-	
+
 	/** 
 	 * Hash of component definitions. Also aliased to `comps`.
 	 * 
@@ -34,12 +34,12 @@ function ECS() {
 	 * ecs.components['foo'] === comp // true
 	 * ecs.comps['foo'] // same
 	 * ```
-	*/ 
+	*/
 	this.components = Object.create(null)
 	this.comps = this.components
 
 	// internals:
-	
+
 	this._uid = 0
 
 	// internal data store:
@@ -72,7 +72,7 @@ function ECS() {
  * var id2 = ecs.createEntity([ 'my-component' ])
  * ```
 */
-ECS.prototype.createEntity = function(comps) {
+ECS.prototype.createEntity = function (comps) {
 	var id = this._uid++
 	if (comps && comps.length) {
 		for (var i = 0; i < comps.length; i++) {
@@ -94,13 +94,13 @@ ECS.prototype.createEntity = function(comps) {
  * ecs.deleteEntity(id2, true) // deletes immediately
  * ```
 */
-ECS.prototype.deleteEntity = function(entID, immediately) {
+ECS.prototype.deleteEntity = function (entID, immediately) {
 	if (immediately) {
 		deleteEntityNow(this, entID)
 	} else {
 		var self = this
 		if (this._deferredRemovals.length === 0) {
-			setTimeout(function() { doDeferredRemoval(self) }, 1)
+			setTimeout(function () { doDeferredRemoval(self) }, 1)
 		}
 		this._deferredRemovals.push(entID)
 	}
@@ -153,7 +153,7 @@ function deleteEntityNow(ecs, entID) {
  * // name == 'a-unique-string'
  * ```
 */
-ECS.prototype.createComponent = function(compDefn) {
+ECS.prototype.createComponent = function (compDefn) {
 	if (!compDefn) throw 'Missing component definition'
 	var name = compDefn.name
 	if (!name) throw 'Component definition must have a name property.'
@@ -189,7 +189,7 @@ ECS.prototype.createComponent = function(compDefn) {
  * ecs.deleteComponent( comp.name )
  * ```
  */
-ECS.prototype.deleteComponent = function(compName) {
+ECS.prototype.deleteComponent = function (compName) {
 	var data = this._data[compName]
 	if (!data) throw 'Unknown component: ' + compName + '.'
 
@@ -224,7 +224,7 @@ ECS.prototype.deleteComponent = function(compName) {
  * ecs.getState(id, 'foo').val // 20
  * ```
  */
-ECS.prototype.addComponent = function(entID, compName, state) {
+ECS.prototype.addComponent = function (entID, compName, state) {
 	var def = this.components[compName]
 	var data = this._data[compName]
 	if (!data) throw 'Unknown component: ' + compName + '.'
@@ -256,7 +256,7 @@ ECS.prototype.addComponent = function(entID, compName, state) {
  * ```
  */
 
-ECS.prototype.hasComponent = function(entID, compName) {
+ECS.prototype.hasComponent = function (entID, compName) {
 	var data = this._data[compName]
 	if (!data) throw 'Unknown component: ' + compName + '.'
 	return (data.hash[entID] !== undefined)
@@ -273,7 +273,7 @@ ECS.prototype.hasComponent = function(entID, compName) {
  * ecs.hasComponent(id, 'foo') // false
  * ```
  */
-ECS.prototype.removeComponent = function(entID, compName) {
+ECS.prototype.removeComponent = function (entID, compName) {
 	var def = this.components[compName]
 	var data = this._data[compName]
 	if (!data) throw 'Unknown component: ' + compName + '.'
@@ -307,7 +307,7 @@ ECS.prototype.removeComponent = function(entID, compName) {
  * ecs.removeComponentLater(id, 'foo')
  * ```
  */
-ECS.prototype.removeComponentLater = function(entID, compName) {
+ECS.prototype.removeComponentLater = function (entID, compName) {
 	var def = this.components[compName]
 	var data = this._data[compName]
 	if (!data) throw 'Unknown component: ' + compName + '.'
@@ -341,7 +341,7 @@ ECS.prototype.removeComponentLater = function(entID, compName) {
  * ```
  */
 
-ECS.prototype.getState = function(entID, compName) {
+ECS.prototype.getState = function (entID, compName) {
 	var data = this._data[compName]
 	if (!data) throw 'Unknown component: ' + compName + '.'
 	return data.hash[entID]
@@ -365,10 +365,10 @@ ECS.prototype.getState = function(entID, compName) {
  * ```  
  */
 
-ECS.prototype.getStateAccessor = function(compName) {
+ECS.prototype.getStateAccessor = function (compName) {
 	if (!this._data[compName]) throw 'Unknown component: ' + compName + '.'
 	var hash = this._data[compName].hash
-	return function(entID) {
+	return function (entID) {
 		return hash[entID]
 	}
 }
@@ -389,13 +389,13 @@ ECS.prototype.getStateAccessor = function(compName) {
  * ```  
  */
 
-ECS.prototype.getComponentAccessor = function(compName) {
+ECS.prototype.getComponentAccessor = function (compName) {
 	if (!this._data[compName]) throw 'Unknown component: ' + compName + '.'
 	var hash = this._data[compName].hash
-	return function(entID) {
+	return function (entID) {
 		return (hash[entID] !== undefined)
 	}
-}	
+}
 
 
 
@@ -411,7 +411,7 @@ ECS.prototype.getComponentAccessor = function(compName) {
  * ```  
  */
 
-ECS.prototype.getStatesList = function(compName) {
+ECS.prototype.getStatesList = function (compName) {
 	var data = this._data[compName]
 	if (!data) throw 'Unknown component: ' + compName + '.'
 	return data.list
@@ -437,7 +437,7 @@ ECS.prototype.getStatesList = function(compName) {
  * ```
  */
 
-ECS.prototype.tick = function(dt) {
+ECS.prototype.tick = function (dt) {
 	doDeferredRemoval(this)
 	var systems = this._systems
 	for (var i = 0; i < systems.length; ++i) {
@@ -469,7 +469,7 @@ ECS.prototype.tick = function(dt) {
  * ```
  */
 
-ECS.prototype.render = function(dt) {
+ECS.prototype.render = function (dt) {
 	doDeferredRemoval(this)
 	var systems = this._renderSystems
 	for (var i = 0; i < systems.length; ++i) {
