@@ -446,6 +446,7 @@ ECS.prototype.tick = function (dt) {
 		var comp = this.components[name]
 		comp.system(dt, list)
 	}
+	doDeferredRemoval(this)
 	return this
 }
 
@@ -478,6 +479,7 @@ ECS.prototype.render = function (dt) {
 		var comp = this.components[name]
 		comp.renderSystem(dt, list)
 	}
+	doDeferredRemoval(this)
 	return this
 }
 

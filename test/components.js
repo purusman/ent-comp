@@ -152,6 +152,53 @@ tape('remove component later', function (t) {
 	t.doesNotThrow(function () { ecs.render() }, 'call render')
 	t.false(ecs.hasComponent(id, comp.name), 'entity no longer has component')
 
+	// removeLater should not remove during a system, but do so afterwards
+	var comp2 = {
+		name: 'foo2',
+		state: { 
+			removeA: false,
+			removeB: false
+		},
+		system: function (dt, states) {
+			for (var i = 0; i < states.length; ++i) {
+				var id = states[i].__id
+				if (states[i].removeA) {
+					ecs.removeComponentLater(id, comp2.name)
+				}
+				t.ok(ecs.hasComponent(id, comp2.name), 'component still there during system')
+			}
+		},
+		renderSystem: function (dt, states) {
+			for (var i = 0; i < states.length; ++i) {
+				var id = states[i].__id
+				if (states[i].removeB) {
+					ecs.removeComponentLater(id, comp2.name)
+				}
+				t.ok(ecs.hasComponent(id, comp2.name), 'component still there during system')
+			}
+		},
+	}
+	ecs.createComponent(comp2)
+	var id2 = ecs.createEntity()
+	var id3 = ecs.createEntity()
+	var id4 = ecs.createEntity()
+	var id5 = ecs.createEntity()
+	ecs.addComponent(id2, comp2.name)
+	ecs.addComponent(id3, comp2.name, { removeA: true })
+	ecs.addComponent(id4, comp2.name, { removeB: true })
+	ecs.addComponent(id5, comp2.name)
+
+	t.ok(ecs.hasComponent(id3, comp2.name), 'later: okay before tick')
+	t.ok(ecs.hasComponent(id4, comp2.name), 'later: okay before tick')
+	ecs.tick()
+	t.false(ecs.hasComponent(id3, comp2.name), 'later: component removed after tick')
+	t.ok(ecs.hasComponent(id4, comp2.name), 'later: component not removed after tick')
+	ecs.render()
+	t.false(ecs.hasComponent(id4, comp2.name), 'later: component removed after render')
+
+	t.ok(ecs.hasComponent(id2, comp2.name), 'later: other component not removed')
+	t.ok(ecs.hasComponent(id5, comp2.name), 'later: other component not removed')
+
 	t.end()
 })
 
