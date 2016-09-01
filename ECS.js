@@ -300,8 +300,8 @@ ECS.prototype.removeComponent = function (entID, compName) {
 
 
 /**
- * Removes a component from an entity the next time `tick` or `render` is called.
- * Useful for removing things from inside a loop processing them.
+ * Removes a component from an entity the next time a `tick` or `render` starts or finishes.
+ * Useful for removing components during a system that loops over the states of that component.
  * 
  * ```js
  * ecs.removeComponentLater(id, 'foo')
