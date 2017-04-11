@@ -294,6 +294,18 @@ ECS.prototype.removeComponent = function (entID, compName) {
 	delete data.hash[entID]
 	delete data.map[entID]
 
+	// check if pair was flagged for later removal
+	var deferred = this._deferredCompRemovals
+	if (deferred.length) {
+		for (var i = 0; i < deferred.length; i++) {
+			var obj = deferred[i]
+			if (obj.ent === entID && obj.comp === compName) {
+				deferred.splice(i, 1)
+				break
+			}
+		}
+	}
+
 	return this
 }
 

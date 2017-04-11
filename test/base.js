@@ -66,8 +66,8 @@ tape('States list after entity deletion', function (t) {
 
 	var states = ecs.getStatesList('foo')
 	var state
-	for (var i = 0; i < states.length; i++) {
-		var id = states[i].__id
+	for (var j = 0; j < states.length; j++) {
+		var id = states[j].__id
 		t.assert(ids.indexOf(id) > -1, 'Ids in state list are as expected')
 	}
 	t.equals(states[NaN], undefined) // sanity check

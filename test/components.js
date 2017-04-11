@@ -155,7 +155,7 @@ tape('remove component later', function (t) {
 	// removeLater should not remove during a system, but do so afterwards
 	var comp2 = {
 		name: 'foo2',
-		state: { 
+		state: {
 			removeA: false,
 			removeB: false
 		},
@@ -198,6 +198,35 @@ tape('remove component later', function (t) {
 
 	t.ok(ecs.hasComponent(id2, comp2.name), 'later: other component not removed')
 	t.ok(ecs.hasComponent(id5, comp2.name), 'later: other component not removed')
+
+	t.end()
+})
+
+
+
+tape('remove component later edge case', function (t) {
+	var comp = { name: 'foo' }
+	var ecs = new ECS()
+	ecs.createComponent(comp)
+
+	var id = ecs.createEntity()
+	ecs.addComponent(id, comp.name)
+
+	// immediate removal should work, even if comp is flagged for later removal
+	t.doesNotThrow(function () { ecs.removeComponentLater(id, comp.name) }, 'flag comp for removal')
+	t.doesNotThrow(function () { ecs.removeComponent(id, comp.name) }, 'call remove on comp flagged for removal')
+	t.false(ecs.hasComponent(id, comp.name), 'component is now removed')
+	t.doesNotThrow(function () { ecs.tick() }, 'call tick')
+	t.false(ecs.hasComponent(id, comp.name), 'entity still has no component')
+
+	// removing and re-adding a comp flagged for later removal should mean it stays added
+	ecs.addComponent(id, comp.name)
+	t.doesNotThrow(function () { ecs.removeComponentLater(id, comp.name) }, 'flag comp for removal')
+	t.doesNotThrow(function () { ecs.removeComponent(id, comp.name) }, 'call remove on comp flagged for removal')
+	t.doesNotThrow(function () { ecs.addComponent(id, comp.name) }, 're-add component while flagged')
+	t.ok(ecs.hasComponent(id, comp.name), 'component is re-added')
+	t.doesNotThrow(function () { ecs.tick() }, 'call tick')
+	t.ok(ecs.hasComponent(id, comp.name), 'component remains re-added')
 
 	t.end()
 })
