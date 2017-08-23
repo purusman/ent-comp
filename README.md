@@ -7,7 +7,7 @@ A light, *fast* entity-component system in Javascript.
 An [Entity Component System](http://vasir.net/blog/game-development/how-to-build-entity-component-system-in-javascript) 
 (ECS) is a programming construct that solves a very common 
 problem in game programming - it lets you model lots of interacting systems 
-whose entities cannot easily be described with OO-style inheritance.
+whose entities are not easily described with OO-style inheritance.
 
 This library is the distilled result of my playing with a bunch of ECS libraries,
 removing what wasn't useful, and rejiggering what remained to perform well in the 
@@ -73,21 +73,21 @@ giving the component a `state` object, and using the `#getState` method.
 
 ```js
 // createComponent returns the component name, for convenience
-var compName = ecs.createComponent({
+var locationComp = ecs.createComponent({
 	name: 'location',
 	state: { x:0, y:0, z:0 },
 })
 
 // give the player entity a location component
-ecs.addComponent(playerID, compName)
+ecs.addComponent(playerID, locationComp)
 
 // grab its state to update its data
-var loc = ecs.getState(playerID, compName)
+var loc = ecs.getState(playerID, locationComp)
 loc.y = 37
 
 // you can also pass in initial state values when adding a component:
-ecs.addComponent(monsterID, compName, { y: 42 })
-ecs.getState(monsterID, compName).y // 42
+ecs.addComponent(monsterID, locationComp, { y: 42 })
+ecs.getState(monsterID, locationComp) // { x:0, y:42, z:0 }
 ```
 
 When a component is added to an entity, its state object is automatically populated with 

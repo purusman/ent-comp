@@ -232,9 +232,9 @@ ECS.prototype.addComponent = function (entID, compName, state) {
 
 	// new component state object for this entity
 	var newState = {}
+	newState.__id = entID
 	extend(newState, def.state)
 	extend(newState, state)
-	newState.__id = entID
 
 	data.hash[entID] = newState
 	data.list.push(newState)
