@@ -46,7 +46,7 @@ tape('Component onRemove events', function (t) {
 	ecs.addComponent(id, comp.name, { num: 2 })
 
 	t.doesNotThrow(function () {
-		ecs.removeComponent(id, comp.name, { num: 2 })
+		ecs.removeComponent(id, comp.name, { num: 2 }, true)
 	}, 'addComponent with onRemove')
 	t.ok(called, 'onRemove called')
 	t.equals(obj.id, id, 'onRemove id argument')
@@ -76,7 +76,7 @@ tape('Component event cases', function (t) {
 	t.equals(added, 2)
 
 	t.equals(removed, 0)
-	ecs.removeComponent(id1, comp.name)
+	ecs.removeComponent(id1, comp.name, true)
 	t.equals(removed, 1)
 	ecs.addComponent(id1, comp.name)
 	ecs.deleteEntity(id1, true) // delete immediately
@@ -132,7 +132,7 @@ tape('Systems', function (t) {
 	t.equals(obj.ct, 2)
 	t.equals(obj.total, 10)
 
-	ecs.removeComponent(id1, comp.name)
+	ecs.removeComponent(id1, comp.name, true)
 	ecs.render(39)
 	t.equals(obj.rdt, 39, 'renderSystem properties')
 	t.equals(obj.rct, 1)

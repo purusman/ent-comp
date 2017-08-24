@@ -56,12 +56,13 @@ being `require`d from a module.
 
 ```js
 var comp = {
-	name: 'a-unique-string',
-	state: {},
-	onAdd:     function(id, state){ },
-	onRemove:  function(id, state){ },
-	system:       function(dt, states){ },
-	renderSystem: function(dt, states){ },
+	 name: 'a-unique-string',
+	 state: {},
+	 onAdd:     function(id, state){ },
+	 onRemove:  function(id, state){ },
+	 system:       function(dt, states){ },
+	 renderSystem: function(dt, states){ },
+	 multi: false,
 }
 var name = ecs.createComponent( comp )
 // name == 'a-unique-string'
@@ -71,6 +72,9 @@ var name = ecs.createComponent( comp )
 
 Deletes the component definition with the given name. 
 First removes the component from all entities that have it.
+This probably shouldn't be called in real-world usage
+(better to define all components when you begin and leave them be)
+but it's here for the sake of completeness.
 
 ```js
 ecs.deleteComponent( comp.name )
@@ -103,17 +107,10 @@ ecs.hasComponent(id, 'foo') // true
 Removes a component from an entity, deleting any state data.
 
 ```js
-ecs.removeComponent(id, 'foo')
+ecs.removeComponent(id, 'foo', true) // final arg means "immediately"
 ecs.hasComponent(id, 'foo') // false
-```
-
-## removeComponentLater()
-
-Removes a component from an entity the next time `tick` or `render` is called.
-Useful for removing things from inside a loop processing them.
-
-```js
-ecs.removeComponentLater(id, 'foo')
+ecs.removeComponent(id, 'bar')
+ecs.hasComponent(id, 'bar') // true - by default the removal is asynchronous
 ```
 
 ## getState()
@@ -207,6 +204,19 @@ ecs.createComponent({
 	}
 })
 ecs.render(16.666)
+```
+
+## removeMultiComponent()
+
+Removes a particular state instance of a multi-component.
+Pass a final truthy argument to make this happen synchronously - 
+but be careful, that will splice an element out of the multi-component array,
+changing the indexes of subsequent elements.
+
+```js
+ecs.getState(id, 'foo')   // [ state1, state2, state3 ]
+ecs.removeMultiComponent(id, 'foo', 1, true)  // true means: immediately
+ecs.getState(id, 'foo')   // [ state1, state3 ]
 ```
 
 <!-- End ecs.js -->

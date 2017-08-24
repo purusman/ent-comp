@@ -60,7 +60,7 @@ Once you have some entities and components, you can add them, remove them, and c
 ecs.addComponent(playerID, 'isPlayer')
 ecs.hasComponent(playerID, 'isPlayer') // true
 
-ecs.removeComponent(playerID, 'isPlayer')
+ecs.removeComponent(playerID, 'isPlayer', true) // final argument means: immediately
 ecs.hasComponent(playerID, 'isPlayer') // false
 
 // when creating an entity you can pass in an array of components to add
@@ -145,6 +145,46 @@ ecs.render( render_time )
 
 See the [API reference](api.md) for details on each method.
 
+## Note on deferred removals
+
+By default, all "remove" APIs (anything that deletes an entity or component,
+or removes a component from an entity) defer execution and happen asynchronously.
+This is done since components tend to remove themselves from inside their 
+system functions. Pass `true` as the final argument to such APIs to make them 
+execute immediately.
+
+## Multi-components
+
+The newest version adds an experimental feature for multi components, 
+which are components where a given entity can have multiple 
+component state objects attached to it. 
+
+API may be in flux, but the gist is that most ECS methods that normally 
+return a state object instead return an array of state objects. 
+Calling `removeComponent` will remove all multi-component instances for 
+that entity, and there's a new `removeMultiComponent(id, name, index, immediately)` 
+API to remove them individually (by their index in the array).
+
+In practice it looks like this:
+```js
+ecs.createComponent({
+	name: 'buff',
+	multi: true, // this marks the component as multi
+	state: { type: '', duration: 100 },
+	system: function(dt, stateLists) {
+		// stateLists is the array of all ent/comp pairs
+		stateLists.forEach(statesArr => {
+			// statesArr is an array of multi components for this entity
+			statesArr.forEach((state, i) => {
+				state.duration -= dt
+				if (state.duration < 0) {
+					ecs.removeMultiComponent(state.__id, 'buff', i)
+				}
+			})
+		})
+	},
+})
+```
 
 ## Further usage:
 
@@ -218,6 +258,19 @@ ecs.addComponent(id, 'foo', { vector3: [1,1,1] })
  2. Provide any way of querying which entities have components A and B, but not C, and so on.
  If you need this, I think maintaining your own lists will be faster 
  (and probably easier to use) than anything the library could do automatically.
+
+## Note to the zero people still reading this:
+
+There could be some undefined behavior lurking in here if you define components 
+with names that are already `Object.prototype`, like `toString` or `hasOwnProperty`. So, like, probably don't do that.
+
+## Change list
+
+ * 0.6.0
+   * `removeComponent` changed to be deferred by default
+   * `removeComponentLater` removed
+   * Adds `multi`-tagged components, and `removeMultiComponent`
+   * Doubles performance of `hasComponent` and `getState` (for some reason..)
 
 ----
 

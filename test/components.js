@@ -26,8 +26,8 @@ tape('Creating and deleting components', function (t) {
 
 	t.ok(ecs.components[comp.name], 'component exists')
 	t.ok(ecs.comps[comp.name], 'comps alias works')
-	t.equals(comp, ecs.components[comp.name])
-	t.equals(comp, ecs.comps[comp.name])
+	t.equals(comp.name, ecs.components[comp.name].name)
+	t.equals(comp.name, ecs.comps[comp.name].name)
 
 	t.throws(function () {
 		ecs.deleteComponent(comp)
@@ -68,10 +68,18 @@ tape('Adding and removing components', function (t) {
 	var id2 = ecs.createEntity()
 	t.doesNotThrow(function () { ecs.addComponent(id2, comp.name, { foo: 1 }) }, 'add component with state')
 	t.ok(ecs.hasComponent(id2, comp.name))
-
-	t.doesNotThrow(function () { ecs.removeComponent(id, comp.name) }, 'remove component')
-	t.throws(function () { ecs.removeComponent(id, comp.name) }, 'remove component twice')
-	t.false(ecs.hasComponent(id, comp.name), 'entity no longer has component')
+	
+	t.doesNotThrow(function () { ecs.removeComponent(id2, comp.name) }, 'remove component, deferred')
+	t.true(ecs.hasComponent(id2, comp.name), 'entity still has component')
+	t.doesNotThrow(function () { ecs.removeComponent(id2, comp.name) }, 'remove component twice ok - deferred')
+	t.doesNotThrow(function () { ecs.tick() }, 'tick while removal is pending')
+	t.throws(function () { ecs.removeComponent(id2, comp.name) }, 'remove already removed component')
+	t.false(ecs.hasComponent(id2, comp.name), 'entity no longer has component')
+	
+	t.doesNotThrow(function () { ecs.addComponent(id2, comp.name, { foo: 1 }) }, 're-add component')
+	t.ok(ecs.hasComponent(id2, comp.name))
+	t.doesNotThrow(function () { ecs.removeComponent(id2, comp.name, true) }, 'remove component immediately')
+	t.false(ecs.hasComponent(id2, comp.name), 'entity no longer has component')
 
 	var id3
 	t.doesNotThrow(function () { id3 = ecs.createEntity([comp.name]) })
@@ -111,15 +119,15 @@ tape('Nontrivial add/remove sequence', function (t) {
 	ecs.addComponent(ids[2], comp.name, { num: 2 })
 	ecs.addComponent(ids[3], comp.name, { num: 3 })
 	t.equals('-123-', getState())
-	ecs.removeComponent(ids[3], comp.name)
+	ecs.removeComponent(ids[3], comp.name, true)
 	ecs.addComponent(ids[4], comp.name, { num: 4 })
-	ecs.removeComponent(ids[1], comp.name)
+	ecs.removeComponent(ids[1], comp.name, true)
 	ecs.addComponent(ids[0], comp.name, { num: 0 })
 	t.equals('0-2-4', getState())
 	ecs.addComponent(ids[3], comp.name, { num: 3 })
-	ecs.removeComponent(ids[4], comp.name)
+	ecs.removeComponent(ids[4], comp.name, true)
 	ecs.addComponent(ids[1], comp.name, { num: 1 })
-	ecs.removeComponent(ids[0], comp.name)
+	ecs.removeComponent(ids[0], comp.name, true)
 	t.equals('-123-', getState())
 
 	t.end()
@@ -127,7 +135,7 @@ tape('Nontrivial add/remove sequence', function (t) {
 
 
 
-tape('remove component later', function (t) {
+tape('remove component deferral behavior', function (t) {
 	var comp = { name: 'foo' }
 	var ecs = new ECS()
 	ecs.createComponent(comp)
@@ -135,18 +143,18 @@ tape('remove component later', function (t) {
 	var id = ecs.createEntity()
 	ecs.addComponent(id, comp.name)
 
-	t.throws(function () { ecs.removeComponentLater() })
-	t.throws(function () { ecs.removeComponentLater(id) })
-	t.throws(function () { ecs.removeComponentLater(id, 'bar') })
+	t.throws(function () { ecs.removeComponent() })
+	t.throws(function () { ecs.removeComponent(id) })
+	t.throws(function () { ecs.removeComponent(id, 'bar') })
 
-	t.doesNotThrow(function () { ecs.removeComponentLater(id, comp.name) }, 'call removeComponentLater')
+	t.doesNotThrow(function () { ecs.removeComponent(id, comp.name) }, 'call removeComponent')
 	t.ok(ecs.hasComponent(id, comp.name), 'entity still has component')
 
 	t.doesNotThrow(function () { ecs.tick() }, 'call tick')
 	t.false(ecs.hasComponent(id, comp.name), 'entity no longer has component')
 
 	ecs.addComponent(id, comp.name)
-	ecs.removeComponentLater(id, comp.name)
+	ecs.removeComponent(id, comp.name)
 	t.ok(ecs.hasComponent(id, comp.name), 'entity still has component')
 
 	t.doesNotThrow(function () { ecs.render() }, 'call render')
@@ -163,7 +171,7 @@ tape('remove component later', function (t) {
 			for (var i = 0; i < states.length; ++i) {
 				var id = states[i].__id
 				if (states[i].removeA) {
-					ecs.removeComponentLater(id, comp2.name)
+					ecs.removeComponent(id, comp2.name)
 				}
 				t.ok(ecs.hasComponent(id, comp2.name), 'component still there during system')
 			}
@@ -172,7 +180,7 @@ tape('remove component later', function (t) {
 			for (var i = 0; i < states.length; ++i) {
 				var id = states[i].__id
 				if (states[i].removeB) {
-					ecs.removeComponentLater(id, comp2.name)
+					ecs.removeComponent(id, comp2.name)
 				}
 				t.ok(ecs.hasComponent(id, comp2.name), 'component still there during system')
 			}
@@ -211,22 +219,23 @@ tape('remove component later edge case', function (t) {
 
 	var id = ecs.createEntity()
 	ecs.addComponent(id, comp.name)
-
+	
 	// immediate removal should work, even if comp is flagged for later removal
-	t.doesNotThrow(function () { ecs.removeComponentLater(id, comp.name) }, 'flag comp for removal')
-	t.doesNotThrow(function () { ecs.removeComponent(id, comp.name) }, 'call remove on comp flagged for removal')
+	t.doesNotThrow(function () { ecs.removeComponent(id, comp.name) }, 'queue comp for later removal')
+	t.doesNotThrow(function () { ecs.removeComponent(id, comp.name, true) }, 'remove comp immediately')
 	t.false(ecs.hasComponent(id, comp.name), 'component is now removed')
 	t.doesNotThrow(function () { ecs.tick() }, 'call tick')
 	t.false(ecs.hasComponent(id, comp.name), 'entity still has no component')
-
+	
 	// removing and re-adding a comp flagged for later removal should mean it stays added
-	ecs.addComponent(id, comp.name)
-	t.doesNotThrow(function () { ecs.removeComponentLater(id, comp.name) }, 'flag comp for removal')
-	t.doesNotThrow(function () { ecs.removeComponent(id, comp.name) }, 'call remove on comp flagged for removal')
-	t.doesNotThrow(function () { ecs.addComponent(id, comp.name) }, 're-add component while flagged')
-	t.ok(ecs.hasComponent(id, comp.name), 'component is re-added')
+	var id2 = ecs.createEntity()
+	ecs.addComponent(id2, comp.name)
+	t.doesNotThrow(function () { ecs.removeComponent(id2, comp.name) }, 'queue comp for later removal')
+	t.doesNotThrow(function () { ecs.removeComponent(id2, comp.name, true) }, 'remove comp immediately')
+	t.doesNotThrow(function () { ecs.addComponent(id2, comp.name) }, 're-add component while flagged')
+	t.ok(ecs.hasComponent(id2, comp.name), 'component is re-added')
 	t.doesNotThrow(function () { ecs.tick() }, 'call tick')
-	t.ok(ecs.hasComponent(id, comp.name), 'component remains re-added')
+	t.ok(ecs.hasComponent(id2, comp.name), 'component remains re-added')
 
 	t.end()
 })
@@ -272,7 +281,7 @@ tape('Component state data', function (t) {
 	t.equals(ecs.getState(id, comp.name).num, 37, 'state is remembered')
 	t.equals(comp.state.num, 1, 'definition state not overwritten')
 
-	ecs.removeComponent(id, comp.name)
+	ecs.removeComponent(id, comp.name, true)
 	t.equals(ecs.getState(id, comp.name), undefined, 'getState undefined after removing component')
 
 	// passing in initial state
