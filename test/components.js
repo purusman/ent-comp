@@ -68,14 +68,14 @@ tape('Adding and removing components', function (t) {
 	var id2 = ecs.createEntity()
 	t.doesNotThrow(function () { ecs.addComponent(id2, comp.name, { foo: 1 }) }, 'add component with state')
 	t.ok(ecs.hasComponent(id2, comp.name))
-	
+
 	t.doesNotThrow(function () { ecs.removeComponent(id2, comp.name) }, 'remove component, deferred')
 	t.true(ecs.hasComponent(id2, comp.name), 'entity still has component')
 	t.doesNotThrow(function () { ecs.removeComponent(id2, comp.name) }, 'remove component twice ok - deferred')
 	t.doesNotThrow(function () { ecs.tick() }, 'tick while removal is pending')
 	t.throws(function () { ecs.removeComponent(id2, comp.name) }, 'remove already removed component')
 	t.false(ecs.hasComponent(id2, comp.name), 'entity no longer has component')
-	
+
 	t.doesNotThrow(function () { ecs.addComponent(id2, comp.name, { foo: 1 }) }, 're-add component')
 	t.ok(ecs.hasComponent(id2, comp.name))
 	t.doesNotThrow(function () { ecs.removeComponent(id2, comp.name, true) }, 'remove component immediately')
@@ -219,14 +219,14 @@ tape('remove component later edge case', function (t) {
 
 	var id = ecs.createEntity()
 	ecs.addComponent(id, comp.name)
-	
+
 	// immediate removal should work, even if comp is flagged for later removal
 	t.doesNotThrow(function () { ecs.removeComponent(id, comp.name) }, 'queue comp for later removal')
 	t.doesNotThrow(function () { ecs.removeComponent(id, comp.name, true) }, 'remove comp immediately')
 	t.false(ecs.hasComponent(id, comp.name), 'component is now removed')
 	t.doesNotThrow(function () { ecs.tick() }, 'call tick')
 	t.false(ecs.hasComponent(id, comp.name), 'entity still has no component')
-	
+
 	// removing and re-adding a comp flagged for later removal should mean it stays added
 	var id2 = ecs.createEntity()
 	ecs.addComponent(id2, comp.name)
@@ -405,6 +405,29 @@ tape('Complex state objects', function (t) {
 	t.equals(state1.obj, state2.obj, 'State properties - objects')
 	state1.obj.foo = 1
 	t.equals(state2.obj.foo, 1) // !!!
+
+	t.end()
+})
+
+
+
+
+tape('State param has __id property', function (t) {
+	var ecs = new ECS()
+
+	function MyClass() { }
+	var comp = {
+		name: 'foo',
+		state: {}
+	}
+	ecs.createComponent(comp)
+
+	var id = ecs.createEntity()
+	ecs.addComponent(id, comp.name, { __id: 6666 })
+	var state = ecs.getState(id, comp.name)
+
+	t.equals(state.__id, id, 'State has correct __id')
+	t.notEquals(state.__id, 6666, 'State throws away passed in __id')
 
 	t.end()
 })

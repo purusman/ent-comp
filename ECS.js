@@ -283,6 +283,9 @@ ECS.prototype.addComponent = function (entID, compName, state) {
 	extend(newState, def.state)
 	extend(newState, state)
 
+	// just in case passed-in state object had an __id property
+	newState.__id = entID
+
 	if (def.multi) {
 		var statesArr = data.hash[entID]
 		if (!statesArr) {
