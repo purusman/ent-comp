@@ -40,7 +40,7 @@ function ECS() {
 
 	// internals:
 
-	this._uid = 0
+	this._uid = 1
 
 	// internal data store:
 	//    this._data['component-name'] = {

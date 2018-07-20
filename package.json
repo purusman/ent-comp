@@ -1,6 +1,6 @@
 {
   "name": "ent-comp",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "A light, fast Entity Component System in JS",
   "main": "ECS.js",
   "scripts": {
