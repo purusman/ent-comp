@@ -1,39 +1,62 @@
 'use strict';
 
 var Benchmark = require('benchmark')
-Benchmark.options.maxTime = 2
+// Benchmark.options.maxTime = 1
 var suite = new Benchmark.Suite
 
 
 /***********************************  SETUP  ************************************/
 
-// experiment: run tests before benchmark to warm up compiler?
-//
-// var tests1 = require('../test/base')
-// var tests2 = require('../test/components')
-// var tests3 = require('../test/events')
-
-
 var ECS = require('..')
 var ecs = new ECS()
 
-var comp = {
-	name: 'foo',
-	state: { num: 1 }
-}
-ecs.createComponent(comp)
+// sizes
+var NUM_COMPS = 300
+var NUM_ENTS = 10000
+var NUM_COMPS_PER_ENT = 50
 
+
+// real component
+var compName = 'real'
+ecs.createComponent({
+	name: compName,
+	state: { num: 1 }
+})
+
+// filler components
+for (var i = 0; i < NUM_COMPS; i++) {
+	ecs.createComponent({
+		name: 'filler' + i,
+		state: { a: 1, b: 2 }
+	})
+}
+
+
+// entities
 var ids = []
-var N = 100
-for (var i = 0; i < N; i++) {
+
+var correctSum = 0
+var correctCount = 0
+
+
+for (var j = 0; j < NUM_ENTS; j++) {
 	var id = ecs.createEntity()
-	if (i%2 == 0) ecs.addComponent(id, comp.name)
+	// every entity gets filler comps
+	var cnum = Math.floor(Math.random() * NUM_COMPS)
+	for (var k = 0; k < NUM_COMPS_PER_ENT; k++) {
+		var fillerName = 'filler' + ((cnum + k) % NUM_COMPS)
+		ecs.addComponent(id, fillerName)
+	}
+	// add real component to only half of entities
+	if (j & 1) continue
+	// data to check
+	var num = Math.floor(Math.random() * 20)
+	ecs.addComponent(id, compName, { num: num })
+	correctSum += num
+	correctCount++
 	ids.push(id)
 }
 
-var sum = 0
-var correctSum = N/2
-var name = comp.name
 
 
 
@@ -41,57 +64,82 @@ var name = comp.name
 
 /***********************************  SUITES  ************************************/
 
-suite.add('loop over hasComponent', function() {
-	sum = 0
-	for (var i = 0; i < ids.length; ++i) {
-		if (ecs.hasComponent(ids[i], name)) sum++
-	}
+var sum = 0
+var ct = 0
+
+
+suite.add('hasComponent', function () {
+	ct = 0
+	sum = correctSum
+	ids.forEach(id => { if (ecs.hasComponent(id, compName)) ct++ })
 })
 
-var hasComp = ecs.getComponentAccessor(name)
-suite.add('loop via getComponentAccessor', function() {
+suite.add('getState', function () {
+	ct = correctCount
 	sum = 0
-	for (var i = 0; i < ids.length; i += 2) {
-		if (hasComp(ids[i])) sum++
-	}
+	ids.forEach(id => { sum += ecs.getState(id, compName).num })
 })
 
-suite.add('loop via getStatesList', function() {
-	sum = 0
-	var list = ecs.getStatesList(name)
-	for (var i = 0; i < list.length; ++i) {
-		sum += list[i].num
-	}
+var hasComp = ecs.getComponentAccessor(compName)
+suite.add('getComponentAccessor', function () {
+	ct = 0
+	sum = correctSum
+	ids.forEach(id => { if (hasComp(id)) ct++ })
 })
 
-suite.add('loop via getState', function() {
+suite.add('getStatesList', function () {
+	ct = correctCount
 	sum = 0
-	for (var i = 0; i < ids.length; i += 2) {
-		sum += ecs.getState(ids[i], name).num
-	}
+	ecs.getStatesList(compName).forEach(state => { sum += state.num })
 })
 
-var accessor = ecs.getStateAccessor(name)
-suite.add('loop via getStateAccessor', function() {
+var accessor = ecs.getStateAccessor(compName)
+suite.add('getStateAccessor', function () {
+	var local = accessor
+	ct = correctCount
 	sum = 0
-	for (var i = 0; i < ids.length; i += 2) {
-		sum += accessor(ids[i]).num
-	}
+	ids.forEach(id => { sum += local(id).num })
 })
 
+
+
+
+// add listeners
+
+suite.on('cycle', function (event) {
+	console.log(String(event.target))
+}).on('cycle', function () {
+	if (sum !== correctSum || ct !== correctCount) throw 'Bad logic?'
+}).on('complete', function () {
+	// console.log('Fastest is ' + this.filter('fastest').map('name'))
+	console.log('All suites executed without error')
+})
 
 
 
 
 /***********************************  EXECUTE  ************************************/
 
+function runTests() {
+	if (suite.running) return
+	console.log('Starting benchmark suite:')
+	var opts = {
+		'async': true,
+	}
+	suite.run(opts)
+}
 
-// add listeners and run
-suite.on('cycle', function(event) {
-	console.log(String(event.target))
-}).on('cycle', function() {
-	if (sum !== correctSum) throw 'Bad logic?'
-}).on('complete', function() {
-	// console.log('Fastest is ' + this.filter('fastest').map('name'))
-	console.log('All suites executed without error')
-}).run({ 'async': true })
+
+if (typeof window !== 'undefined') {
+	// browser version
+	window.run = runTests
+
+	// hacky bug fix?
+	window.define = {}
+	window.define.amd = {}
+} else {
+	// node
+	runTests()
+}
+
+
