@@ -17,12 +17,11 @@ tape('Instantiation', function (t) {
 
 tape('Entities', function (t) {
 	var ecs = new ECS()
-	var id1, id2
+	var id1
 
 	t.doesNotThrow(function () { id1 = ecs.createEntity() }, 'createEntity')
-	t.doesNotThrow(function () { id2 = ecs.createEntity() }, 'createEntity')
+	var id2 = ecs.createEntity()
 
-	t.assert(id1 != id2, 'entity ids are different')
 	t.assert(id1 !== id2, 'entity ids are different')
 
 	t.doesNotThrow(function () { ecs.deleteEntity(id1, true) }, 'deleteEntity, immediate')
@@ -58,14 +57,13 @@ tape('States list after entity deletion', function (t) {
 	var ids = []
 	for (var i = 0; i < 6; i++) ids.push(ecs.createEntity(['foo']))
 	ecs.deleteEntity(ids[1]); ids[1] = 'DELETED'
-	ecs.deleteEntity(ids[2]); ids[2] = 'DELETED'
 	ecs.deleteEntity(ids[5]); ids[5] = 'DELETED'
+	ecs.deleteEntity(ids[2]); ids[2] = 'DELETED'
 	ecs.deleteEntity(ids[4]); ids[4] = 'DELETED'
 	ids.push(ecs.createEntity(['foo']))
 	ecs.tick() // runs deferred deletions
 
 	var states = ecs.getStatesList('foo')
-	var state
 	for (var j = 0; j < states.length; j++) {
 		var id = states[j].__id
 		t.assert(ids.indexOf(id) > -1, 'Ids in state list are as expected')

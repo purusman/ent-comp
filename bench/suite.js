@@ -1,145 +1,202 @@
-'use strict';
+'use strict'
 
-var Benchmark = require('benchmark')
-// Benchmark.options.maxTime = 1
-var suite = new Benchmark.Suite
+var ECS = require('../src/ECS')
+var Bench = require('fen-bench')
+var windowed = (typeof window !== 'undefined')
 
 
-/***********************************  SETUP  ************************************/
 
-var ECS = require('..')
+
+/**********************  SETUP  ***********************/
+
 var ecs = new ECS()
 
-// sizes
-var NUM_COMPS = 300
 var NUM_ENTS = 10000
-var NUM_COMPS_PER_ENT = 50
+var NUM_COMPS = 1000
+var NUM_COMPS_PER_ENT = 100
 
-
-// real component
-var compName = 'real'
-ecs.createComponent({
-	name: compName,
-	state: { num: 1 }
-})
-
-// filler components
-for (var i = 0; i < NUM_COMPS; i++) {
-	ecs.createComponent({
-		name: 'filler' + i,
-		state: { a: 1, b: 2 }
-	})
-}
-
-
-// entities
+var correctCount = 0
+var correctSum = 0
 var ids = []
 
-var correctSum = 0
-var correctCount = 0
+console.log('Setting up tests...')
+setUpECS(ecs)
 
 
-for (var j = 0; j < NUM_ENTS; j++) {
-	var id = ecs.createEntity()
-	// every entity gets filler comps
-	var cnum = Math.floor(Math.random() * NUM_COMPS)
-	for (var k = 0; k < NUM_COMPS_PER_ENT; k++) {
-		var fillerName = 'filler' + ((cnum + k) % NUM_COMPS)
-		ecs.addComponent(id, fillerName)
+function setUpECS(ecs) {
+
+	// real component
+	ecs.createComponent({
+		name: 'real-comp',
+		state: { num: 1 }
+	})
+
+	// filler components
+	for (var i = 0; i < NUM_COMPS; i++) {
+		ecs.createComponent({
+			name: 'filler' + i,
+			state: { a: 1, b: 2 }
+		})
 	}
-	// add real component to only half of entities
-	if (j & 1) continue
-	// data to check
-	var num = Math.floor(Math.random() * 20)
-	ecs.addComponent(id, compName, { num: num })
-	correctSum += num
-	correctCount++
-	ids.push(id)
+
+	// entities
+	ids = []
+	correctCount = 0
+	correctSum = 0
+	for (var j = 0; j < NUM_ENTS; j++) {
+		var id = ecs.createEntity()
+		// every entity gets filler comps
+		var cnum = (j * 13) % NUM_COMPS
+		for (var k = 0; k < NUM_COMPS_PER_ENT; k++) {
+			var fillerName = 'filler' + ((cnum + k) % NUM_COMPS)
+			ecs.addComponent(id, fillerName)
+		}
+		// add real component to most but not all entities
+		if (j % 8 === 0) continue
+		var num = (j * 17) % 20
+		ecs.addComponent(id, 'real-comp', { num: num })
+		correctSum += num
+		correctCount++
+		ids.push(id)
+	}
+
+	// delete a few things in case that matters
+	var del = i => {
+		var id = ids[i]
+		if (ecs.hasComponent(id, 'real-comp')) {
+			correctCount--
+			correctSum -= ecs.getState(id, 'real-comp').num
+		}
+		ecs.deleteEntity(ids[i], true)
+		ids.splice(i, 1)
+	}
+	for (var di = 44; di < 55; di++) del(di)
 }
 
 
 
 
-
-
-/***********************************  SUITES  ************************************/
-
-var sum = 0
-var ct = 0
-
-
-suite.add('hasComponent', function () {
-	ct = 0
-	sum = correctSum
-	ids.forEach(id => { if (ecs.hasComponent(id, compName)) ct++ })
-})
-
-suite.add('getState', function () {
-	ct = correctCount
-	sum = 0
-	ids.forEach(id => { sum += ecs.getState(id, compName).num })
-})
-
-var hasComp = ecs.getComponentAccessor(compName)
-suite.add('getComponentAccessor', function () {
-	ct = 0
-	sum = correctSum
-	ids.forEach(id => { if (hasComp(id)) ct++ })
-})
-
-suite.add('getStatesList', function () {
-	ct = correctCount
-	sum = 0
-	ecs.getStatesList(compName).forEach(state => { sum += state.num })
-})
-
-var accessor = ecs.getStateAccessor(compName)
-suite.add('getStateAccessor', function () {
-	var local = accessor
-	ct = correctCount
-	sum = 0
-	ids.forEach(id => { sum += local(id).num })
-})
+/**********************  TEST CASES  ***********************/
 
 
 
 
-// add listeners
-
-suite.on('cycle', function (event) {
-	console.log(String(event.target))
-}).on('cycle', function () {
-	if (sum !== correctSum || ct !== correctCount) throw 'Bad logic?'
-}).on('complete', function () {
-	// console.log('Fastest is ' + this.filter('fastest').map('name'))
-	console.log('All suites executed without error')
-})
+var bench = new Bench()
+bench.testDuration = 100
+bench.pauseDuration = 10
 
 
-
-
-/***********************************  EXECUTE  ************************************/
-
-function runTests() {
-	if (suite.running) return
-	console.log('Starting benchmark suite:')
-	var opts = {
-		'async': true,
+bench.testCases.push({
+	name: 'hasComponent',
+	fn: function () {
+		var ct = 0
+		for (var i = 0; i < ids.length; i++) {
+			if (ecs.hasComponent(ids[i], 'real-comp')) ct++
+		}
+		return ct
 	}
-	suite.run(opts)
-}
+})
 
 
-if (typeof window !== 'undefined') {
-	// browser version
-	window.run = runTests
 
-	// hacky bug fix?
-	window.define = {}
-	window.define.amd = {}
+bench.testCases.push({
+	name: 'getState',
+	fn: function () {
+		var sum = 0
+		for (var i = 0; i < ids.length; i++) {
+			sum += ecs.getState(ids[i], 'real-comp').num
+		}
+		return sum
+	}
+})
+
+
+
+bench.testCases.push({
+	name: 'stateAccessor',
+	fn: function () {
+		var acc = ecs.getStateAccessor('real-comp')
+		var sum = 0
+		for (var i = 0; i < ids.length; i++) {
+			sum += acc(ids[i]).num
+		}
+		return sum
+	}
+})
+
+
+bench.testCases.push({
+	name: 'componentAccessor',
+	fn: function () {
+		var acc = ecs.getComponentAccessor('real-comp')
+		var ct = 0
+		for (var i = 0; i < ids.length; i++) {
+			if (acc(ids[i])) ct++
+		}
+		return ct
+	}
+})
+
+
+bench.testCases.push({
+	name: 'getStatesList',
+	fn: function () {
+		var sum = 0
+		var list = ecs.getStatesList('real-comp')
+		for (var i = 0; i < list.length; i++) {
+			sum += list[i].num
+		}
+		return sum
+	}
+})
+
+
+
+
+// sanity correctness check
+bench.testCases.forEach(item => {
+	var res = item.fn()
+	if (res !== correctSum && res !== correctCount) throw 'Logic error!'
+})
+
+
+
+
+
+/**********************  EXECUTE  ***********************/
+
+
+
+
+
+if (windowed) {
+
+	// browser
+	var but = document.querySelector('#run')
+	but.onclick = function () {
+		if (!bench.running) bench.start()
+		else bench.stop()
+		but.textContent = (bench.running) ? 'RUNNING' : 'RUN'
+	}
+
+	var out = document.querySelector('#output')
+	var ct = 0
+	bench.callback = function () {
+		out.value = `	Runs: ${++ct}\n` + bench.report()
+	}
+
 } else {
+
 	// node
-	runTests()
+	console.log('Running tests...')
+	bench.start()
+	var iter = 0
+	bench.callback = function () {
+		if (iter++ < 5) return
+		console.log(bench.report() + '\n')
+		iter = 0
+	}
+
 }
 
 

@@ -1,13 +1,13 @@
 {
   "name": "ent-comp",
-  "version": "0.6.3",
+  "version": "0.7.0",
   "description": "A light, fast Entity Component System in JS",
-  "main": "ECS.js",
+  "main": "src/ECS.js",
   "scripts": {
     "test": "tape test/*.js",
     "bench": "node bench/suite.js",
-    "browserBench": "(cd bench; webpack --watch)",
-    "doc": "markdox -o api.md ecs.js"
+    "liveBench": "(cd bench; webpack-dev-server)",
+    "doc": "markdox -o api.md src/ECS.js"
   },
   "keywords": [
     "ECS",
@@ -23,7 +23,7 @@
     "url": "https://github.com/andyhall/ent-comp"
   },
   "devDependencies": {
-    "benchmark": "^2.1.4",
+    "fen-bench": "^0.1.0",
     "markdox": "^0.1.10",
     "tape": "^4.4.0"
   },

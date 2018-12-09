@@ -57,6 +57,7 @@ tape('Multi component adding / removing', function (t) {
     t.ok(values.includes(2), 'getState array included state.value = 2')
     t.ok(values.includes(3), 'getState array included state.value = 3')
 
+
     t.end()
 })
 
@@ -77,18 +78,104 @@ tape('Multi component remove by index', function (t) {
 
     var states = ecs.getState(id, comp.name)
     t.equals(states.length, 3, 'multi comp states list')
-    
+
     t.doesNotThrow(function () { ecs.removeMultiComponent(id, comp.name, 1) }, 'removeMultiComp deferred')
     t.equals(ecs.getState(id, comp.name).length, 3, 'deferred removal still pending')
     t.doesNotThrow(function () { ecs.tick() }, 'tick with deferral')
     t.equals(ecs.getState(id, comp.name).length, 2, 'deferred removal done')
-    
+
     t.doesNotThrow(function () { ecs.removeMultiComponent(id, comp.name, 0, true) }, 'removeMultiComp immediate')
     t.equals(ecs.getState(id, comp.name).length, 1, 'immediate removal done')
     t.equals(ecs.getState(id, comp.name)[0].value, 9, 'removals were correct')
 
     t.end()
 })
+
+
+
+tape('Complex deferred multi component removal', function (t) {
+    var ecs = new ECS()
+    var id = ecs.createEntity()
+    var comp = {
+        name: 'multi-component',
+        state: { value: 37 },
+        multi: true,
+    }
+    ecs.createComponent(comp)
+    for (var i = 0; i < 10; i++) ecs.addComponent(id, comp.name, { value: i })
+
+    t.doesNotThrow(function () {
+        ecs.removeMultiComponent(id, comp.name, 2)
+        ecs.removeMultiComponent(id, comp.name, 6)
+        ecs.removeMultiComponent(id, comp.name, 0)
+        ecs.removeMultiComponent(id, comp.name, 8)
+        ecs.removeMultiComponent(id, comp.name, 4)
+    }, 'multi removal in mixed order')
+
+    t.doesNotThrow(function () { ecs.tick() }, 'tick after mixed multi removal')
+    var states
+    t.doesNotThrow(function () { states = ecs.getState(id, comp.name) }, 'get states after mixed multi removal')
+
+    var values = states.map(state => state.value)
+    var ok = true
+    for (var j = 1; j < 10; j++) {
+        var shouldRemain = !!(j % 2)
+        if (shouldRemain !== values.includes(j)) ok = false
+    }
+    t.assert(ok, 'Multi values consistent after mixed removal')
+
+    t.end()
+})
+
+
+
+
+
+tape('Complex multi component entity removal', function (t) {
+    var ecs = new ECS()
+    var comp = {
+        name: 'multi-component',
+        state: { value: 37 },
+        multi: true,
+    }
+    ecs.createComponent(comp)
+
+    // populate
+    var ids = Array.from(Array(25)).map(($, i) => i + 1)
+    ids.forEach(id => ecs.addComponent(id, comp.name, { value: id }))
+
+    // remove some components, immediately or not
+    var toRemove = [21, 6, 12, 19, 11, 23, 14, 7, 8, 18, 4, 3, 20, 10, 15, 16, 2]
+    t.doesNotThrow(function () {
+        toRemove.forEach((id, i) => {
+            if (i % 2 === 0) {
+                ecs.deleteEntity(id, true)
+            } else {
+                ecs.deleteEntity(id)
+            }
+            if (i % 4 === 0) ecs.tick()
+        })
+    }, `Mixed multi-comp entity deletions with tick`)
+
+    t.doesNotThrow(function () { ecs.tick() }, `Tick after mixed ent delete with multi-comp`)
+
+    // check results
+    var states
+    var ok = true
+    t.doesNotThrow(function () {
+        ids.forEach(id => {
+            states = ecs.getState(id, comp.name)
+            if (toRemove.includes(id)) {
+                if (states) ok = false
+            } else {
+                if (!(states && (states[0].value === id))) ok = false
+            }
+        })
+    }, 'State accesses after mixed ent deletes with multi-comp')
+
+    t.end()
+})
+
 
 
 

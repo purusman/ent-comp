@@ -1,18 +1,18 @@
 # ent-comp
 
-A light, *fast* entity-component system in Javascript.
+A light, *fast* entity-component system in Javascript, with no dependencies.
 
 ## Overview
 
 An [Entity Component System](http://vasir.net/blog/game-development/how-to-build-entity-component-system-in-javascript) 
 (ECS) is a programming construct that solves a very common 
-problem in game programming - it lets you model lots of interacting systems 
-whose entities are not easily described with OO-style inheritance.
+problem in game programming - it lets you easily model dynamic systems 
+whose entities are not well-suited to OO-style inheritance.
 
 This library is the distilled result of my playing with a bunch of ECS libraries,
 removing what wasn't useful, and rejiggering what remained to perform well in the 
-most important cases. Specifically it's tuned to be fast at accessing the state of a given entity/component, 
-and looping over all states for a given component. 
+most important cases. Specifically it's tuned to be fast at accessing the state 
+of a given entity/component, and looping over all states for a given component. 
 
 To get started, check the usage examples below, or the [API reference](api.md).
 
@@ -20,7 +20,7 @@ To get started, check the usage examples below, or the [API reference](api.md).
 
 To use as a dependency:
 
-	npm install --save-dev ent-comp
+	npm install ent-comp
 
 To hack on it:
 
@@ -42,8 +42,8 @@ var EntComp = require('ent-comp')
 var ecs = new EntComp()
 
 // Entities are simply integer IDs:
-var playerID = ecs.createEntity() // 0
-var monsterID = ecs.createEntity() // 1
+var playerID = ecs.createEntity() // 1
+var monsterID = ecs.createEntity() // 2
 
 // components are defined with a definition object:
 ecs.createComponent({
@@ -90,15 +90,15 @@ ecs.addComponent(monsterID, locationComp, { y: 42 })
 ecs.getState(monsterID, locationComp) // { x:0, y:42, z:0 }
 ```
 
-When a component is added to an entity, its state object is automatically populated with 
-an `__id` property denoting the entity's ID. 
+When a component is added to an entity, its state object is automatically 
+populated with an `__id` property denoting the entity's ID. 
 
 ```js
 loc.__id // same as playerID
 ```
 
 Components can also have `onAdd` and `onRemove` properties, which get called 
-as any entity gains or loses the component.
+as any entity gains or loses the component. 
 
 ```js
 ecs.createComponent({
@@ -125,16 +125,16 @@ ecs.createComponent({
 	state: { hp: 100 },
 	system: function(dt, states) {
 		// states is an array of entity state objects
-		for (var i=0; i<states.length; i++) {
-			if (states[i].hp <= 0) // an entity died!
-		}
+		states.forEach(state => {
+			if (state.hp <= 0) console.log('Entity died!')
+		})
 	},
 	renderSystem: function(dt, states) {
-		for (var i=0; i<states.length; i++) {
-			var id = states[i].__id
-			var hp = states[i].hp
+		states.forEach(state => {
+			var id = state.__id
+			var hp = state.hp
 			drawTheEntityHitpoints(id, hp) 
-		}
+		})
 	},
 })
 
@@ -155,11 +155,10 @@ execute immediately.
 
 ## Multi-components
 
-The newest version adds an experimental feature for multi components, 
-which are components where a given entity can have multiple 
-component state objects attached to it. 
+This library now supports multi components, where a given entity can have 
+multiple state objects for a given component. 
 
-API may be in flux, but the gist is that most ECS methods that normally 
+API may change someday, but for now all ECS methods that normally 
 return a state object instead return an array of state objects. 
 Calling `removeComponent` will remove all multi-component instances for 
 that entity, and there's a new `removeMultiComponent(id, name, index, immediately)` 
@@ -170,12 +169,13 @@ In practice it looks like this:
 ecs.createComponent({
 	name: 'buff',
 	multi: true, // this marks the component as multi
-	state: { type: '', duration: 100 },
+	state: { buffName: '', duration: 100 },
 	system: function(dt, stateLists) {
 		// stateLists is the array of all ent/comp pairs
 		stateLists.forEach(statesArr => {
 			// statesArr is an array of multi components for this entity
 			statesArr.forEach((state, i) => {
+				// update the state of this particular entity's buff
 				state.duration -= dt
 				if (state.duration < 0) {
 					ecs.removeMultiComponent(state.__id, 'buff', i)
@@ -190,7 +190,7 @@ ecs.createComponent({
 
 If you need to query certain components many times each frame, you can create 
 bound accessor functions to get the existence or state of a given component.
-These accessors will perform a bit faster than `getState` and `hasComponent`.
+These accessors are moderately faster than `getState` and `hasComponent`.
 
 ```js
 var hasLocation = ecs.getComponentAccessor('location')
@@ -199,7 +199,6 @@ hasLocation(playerID) // true
 var getLocation = ecs.getStateAccessor('location')
 getLocation(playerID) === loc // true
 ```
-
 
 There's also an API for getting an array of state objects for a given component.
 Though if you find yourself using this, you might want to just define a system instead.
@@ -259,13 +258,11 @@ ecs.addComponent(id, 'foo', { vector3: [1,1,1] })
  If you need this, I think maintaining your own lists will be faster 
  (and probably easier to use) than anything the library could do automatically.
 
-## Note to the zero people still reading this:
-
-There could be some undefined behavior lurking in here if you define components 
-with names that are already `Object.prototype`, like `toString` or `hasOwnProperty`. So, like, probably don't do that.
 
 ## Change list
 
+ * 0.7.0
+   * Internals rebuilt and bugs fixed, should be no API changes
  * 0.6.0
    * `removeComponent` changed to be deferred by default
    * `removeComponentLater` removed
