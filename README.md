@@ -33,6 +33,11 @@ npm run bench    # run benchmarks
 npm run doc      # rebuild API docs
 ```
 
+## API reference:
+
+See [api.md](api.md).
+
+
 ## Basic usage:
 
 Create the ECS, entities, and components thusly:

@@ -5,23 +5,27 @@ var DataStore = require('./dataStore')
 
 
 
-/**
+/* *
  * 
- * # ent-comp API Documentation:
+ * @module ECS
+ * @typicalname ecs
+ * A light, *fast* Entity Component System in JS
  * 
 */
 
 
 
 /**
- * @class ECS
- * 
- * Creates a new entity-component-system manager.
+ * Constructor for a new entity-component-system manager.
  * 
  * ```js
  * var ECS = require('ent-comp')
  * var ecs = new ECS()
  * ```
+ * @class
+ * @constructor
+ * @exports ECS
+ * @typicalname ecs
 */
 
 function ECS() {
@@ -34,7 +38,7 @@ function ECS() {
 	 * var comp = { name: 'foo' }
 	 * ecs.createComponent(comp)
 	 * ecs.components['foo'] === comp // true
-	 * ecs.comps['foo'] // same
+	 * ecs.comps['foo']               // same
 	 * ```
 	*/
 	this.components = {}
@@ -44,7 +48,7 @@ function ECS() {
 
 	/*
 	 * 
-	 * 		internals:
+	 * 		internal properties:
 	 * 
 	*/
 
@@ -101,18 +105,14 @@ function ECS() {
 
 	/**
 	 * Deletes an entity, which in practice just means removing all its components.
-	 * By default the actual removal is deferred (since entities will tend to 
-	 * call this on themselves during event handlers, etc).
+	 * By default the actual removal is deferred (since entities often
+	 * delete themselves from their system function, etc).
 	 * Pass a truthy second parameter to force immediate removal.
 	 * 
 	 * ```js
 	 * ecs.deleteEntity(id)
 	 * ecs.deleteEntity(id2, true) // deletes immediately
 	 * ```
-	 * 
-	 * Note that if you need to delete large numbers of entities at once,
-	 * and you know which components they have, this method will be a bit 
-	 * slower than removing the components manually.
 	*/
 	this.deleteEntity = function (entID, immediately) {
 		if (immediately) {
@@ -149,7 +149,7 @@ function ECS() {
 	 * }
 	 * 
 	 * var name = ecs.createComponent( comp )
-	 * // name == 'a-unique-string'
+	 * // name == 'some-unique-string'
 	 * ```
 	 * 
 	 * Note the `multi` flag - for components where this is true, a given 
@@ -191,9 +191,10 @@ function ECS() {
 	/**
 	 * Deletes the component definition with the given name. 
 	 * First removes the component from all entities that have it.
-	 * This probably shouldn't be called in real-world usage
-	 * (better to define all components when you begin and leave them be)
-	 * but it's here if you need it.
+	 * 
+	 * (This probably shouldn't be called in real-world usage - 
+	 * better to define all components when you begin and leave them be - 
+	 * but it's here if you need it.)
 	 * 
 	 * ```js
 	 * ecs.deleteComponent( comp.name )
@@ -278,8 +279,8 @@ function ECS() {
 	 * Checks if an entity has a component.
 	 * 
 	 * ```js
-	 * ecs.addComponent(id, 'foo')
-	 * ecs.hasComponent(id, 'foo') // true
+	 * ecs.addComponent(id, 'comp-name')
+	 * ecs.hasComponent(id, 'comp-name') // true
 	 * ```
 	*/
 
@@ -298,9 +299,9 @@ function ECS() {
 	 * 
 	 * ```js
 	 * ecs.removeComponent(id, 'foo', true) // final arg means "immediately"
-	 * ecs.hasComponent(id, 'foo') // false
+	 * ecs.hasComponent(id, 'foo')          // false
 	 * ecs.removeComponent(id, 'bar')
-	 * ecs.hasComponent(id, 'bar') // true - by default the removal is asynchronous
+	 * ecs.hasComponent(id, 'bar')          // true, removal is deferred by default
 	 * ```
 	*/
 	this.removeComponent = function (entID, compName, immediately) {
@@ -342,8 +343,8 @@ function ECS() {
 	 * 	state: { val: 0 }
 	 * })
 	 * ecs.addComponent(id, 'foo')
-	 * ecs.getState(id, 'foo').val  // 0
-	 * ecs.getState(id, 'foo').__id // equals id
+	 * ecs.getState(id, 'foo').val   // 0
+	 * ecs.getState(id, 'foo').__id  // equals id
 	 * ```
 	*/
 
@@ -364,7 +365,8 @@ function ECS() {
 	 * ```js
 	 * var arr = ecs.getStatesList('foo')
 	 * // returns something shaped like:
-	 * //   [ {__id:0, x:1}, {__id:7, x:2}  ]
+	 * //   [ {__id:0, x:1}, 
+	 * //     {__id:7, x:2}  ]
 	 * ```  
 	*/
 
@@ -379,8 +381,8 @@ function ECS() {
 
 	/**
 	 * Returns a `getState`-like accessor bound to a given component name. 
-	 * The accessor is much faster than `getState`, so you should create an accessor 
-	 * for any component whose state you'll be accessing a lot.
+	 * The accessor is faster than `getState`, so you may want to create 
+	 * an accessor for any component you'll be accessing a lot.
 	 * 
 	 * ```js
 	 * ecs.createComponent({
@@ -478,7 +480,7 @@ function ECS() {
 	 * 		// states is the same array you'd get from #getStatesList()
 	 * 	}
 	 * })
-	 * ecs.render(16.666)
+	 * ecs.render(1000/60)
 	 * ```
 	*/
 
@@ -542,13 +544,13 @@ function ECS() {
 	 * Moves a given component to the end of the systems-calling order.
 	 * 
 	 * ```js
-	 * ecs.createComponent({ name: 'foo' })
-	 * ecs.createComponent({ name: 'bar' })
-	 * ecs.createComponent({ name: 'baz' })
-	 * ecs.tick(30)  // foo systems first before other components
+	 * ecs.createComponent({ name: 'foo', system: fooFn })
+	 * ecs.createComponent({ name: 'bar', system: barFn })
+	 * ecs.createComponent({ name: 'baz', system: bazFn })
+	 * ecs.tick(30)  // foo systems fire first before other components
 	 * 
 	 * ecs.callComponentSystemsLast('foo')
-	 * ecs.tick(30)  // foo system fires last, after all other components
+	 * ecs.tick(30)  // foo system now fires last
 	 * ```
 	 */
 	this.callComponentSystemsLast = function (compName) {

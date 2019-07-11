@@ -10,7 +10,7 @@
     "test": "tape test/*.js",
     "bench": "node bench/suite.js",
     "liveBench": "(cd bench; webpack-dev-server)",
-    "doc": "markdox -o api.md src/ECS.js"
+    "doc": "jsdoc2md src/* --partial doc-templates/*  > api.md"
   },
   "keywords": [
     "ECS",
@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "fen-bench": "^0.1.0",
-    "markdox": "^0.1.10",
+    "jsdoc-to-markdown": "^5.0.0",
     "tape": "^4.4.0"
   },
   "dependencies": {}
