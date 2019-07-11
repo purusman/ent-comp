@@ -261,6 +261,8 @@ ecs.addComponent(id, 'foo', { vector3: [1,1,1] })
 
 ## Change list
 
+ * 0.8.0
+   * Added `ecs.callComponentSystemsLast(compName)`
  * 0.7.0
    * Internals rebuilt and bugs fixed, should be no API changes
  * 0.6.0

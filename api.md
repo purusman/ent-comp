@@ -238,6 +238,20 @@ ecs.removeMultiComponent(id, 'foo', 1, true)  // true means: immediately
 ecs.getState(id, 'foo')   // [ state1, state3 ]
 ```
 
+## callComponentSystemsLast()
+
+Moves a given component to the end of the systems-calling order.
+
+```js
+ecs.createComponent({ name: 'foo' })
+ecs.createComponent({ name: 'bar' })
+ecs.createComponent({ name: 'baz' })
+ecs.tick(30)  // foo systems first before other components
+
+ecs.callComponentSystemsLast('foo')
+ecs.tick(30)  // foo system fires last, after all other components
+```
+
 internal implementation of various delete operations
 
 internals for handling deferrals

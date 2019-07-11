@@ -146,5 +146,51 @@ tape('Systems', function (t) {
 
 
 
+tape('System order', function (t) {
+	var systemEvents = []
+	var renderEvents = []
+	var fooComp = {
+		name: 'foo',
+		state: {},
+		system: () => { systemEvents.push('foo') },
+		renderSystem: () => { renderEvents.push('foo') },
+	}
+	var barComp = {
+		name: 'bar',
+		state: {},
+		system: () => { systemEvents.push('bar') },
+		renderSystem: () => { renderEvents.push('bar') },
+	}
+	var ecs = new ECS()
+	ecs.createComponent(fooComp)
+	ecs.createComponent(barComp)
+	t.equals(systemEvents.length, 0, 'systems do not fire until tick')
+	t.equals(renderEvents.length, 0, 'render systems do not fire until render')
+
+	ecs.tick()
+	t.equals(systemEvents.length, 2, 'systems fire after tick')
+	t.equals(systemEvents[0], 'foo', 'systems fire in order components added')
+	t.equals(systemEvents[1], 'bar', 'systems fire in order components added')
+	ecs.render()
+	t.equals(renderEvents.length, 2, 'render systems fire after render')
+	t.equals(renderEvents[0], 'foo', 'render systems fire in order components added')
+	t.equals(renderEvents[1], 'bar', 'render systems fire in order components added')
+
+	systemEvents.length = 0
+	renderEvents.length = 0
+	ecs.callComponentSystemsLast('foo')
+	ecs.tick()
+	t.equals(systemEvents[0], 'bar', 'systems fire in updated order')
+	t.equals(systemEvents[1], 'foo', 'systems fire in updated order')
+	ecs.render()
+	t.equals(renderEvents[0], 'bar', 'render systems fire in updated order')
+	t.equals(renderEvents[1], 'foo', 'render systems fire in updated order')
+
+	t.end()
+})
+
+
+
+
 
 

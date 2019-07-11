@@ -538,6 +538,40 @@ function ECS() {
 
 
 
+	/**
+	 * Moves a given component to the end of the systems-calling order.
+	 * 
+	 * ```js
+	 * ecs.createComponent({ name: 'foo' })
+	 * ecs.createComponent({ name: 'bar' })
+	 * ecs.createComponent({ name: 'baz' })
+	 * ecs.tick(30)  // foo systems first before other components
+	 * 
+	 * ecs.callComponentSystemsLast('foo')
+	 * ecs.tick(30)  // foo system fires last, after all other components
+	 * ```
+	 */
+	this.callComponentSystemsLast = function (compName) {
+		var i = systems.indexOf(compName)
+		if (i > -1) {
+			var sys = systems[i]
+			systems.splice(i, 1)
+			systems.push(sys)
+		}
+
+		var j = renderSystems.indexOf(compName)
+		if (j > -1) {
+			var ren = renderSystems[j]
+			renderSystems.splice(j, 1)
+			renderSystems.push(ren)
+		}
+
+		return self
+	}
+
+
+
+
 
 
 
