@@ -25,7 +25,6 @@ var ecs = new ECS()
     * [.tick()](#module_ECS+tick)
     * [.render()](#module_ECS+render)
     * [.removeMultiComponent()](#module_ECS+removeMultiComponent)
-    * [.callComponentSystemsLast()](#module_ECS+callComponentSystemsLast)
 
 ----
 
@@ -85,6 +84,7 @@ is being `require`d from a module.
 var comp = {
 	 name: 'some-unique-string',
 	 state: {},
+	 order: 99,
 	 onAdd:        function(id, state){ },
 	 onRemove:     function(id, state){ },
 	 system:       function(dt, states){ },
@@ -240,9 +240,12 @@ Tells the ECS that a game tick has occurred, causing component
 The optional parameter simply gets passed to the system functions. 
 It's meant to be a timestep, but can be used (or not used) as you like.    
 
+If components have an `order` property, they'll get called in that order
+(lowest to highest). Component order defaults to `99`.
 ```js
 ecs.createComponent({
 	name: foo,
+	order: 1,
 	system: function(dt, states) {
 		// states is the same array you'd get from #getStatesList()
 		states.forEach(state => {
@@ -267,6 +270,7 @@ called with separate timing, in case you want to
 ```js
 ecs.createComponent({
 	name: foo,
+	order: 5,
 	renderSystem: function(dt, states) {
 		// states is the same array you'd get from #getStatesList()
 	}
@@ -288,23 +292,6 @@ changing the indexes of subsequent elements.
 ecs.getState(id, 'foo')   // [ state1, state2, state3 ]
 ecs.removeMultiComponent(id, 'foo', 1, true)  // true means: immediately
 ecs.getState(id, 'foo')   // [ state1, state3 ]
-```
-
-----
-
-<a name="module_ECS+callComponentSystemsLast"></a>
-
-## ecs.callComponentSystemsLast()
-Moves a given component to the end of the systems-calling order.
-
-```js
-ecs.createComponent({ name: 'foo', system: fooFn })
-ecs.createComponent({ name: 'bar', system: barFn })
-ecs.createComponent({ name: 'baz', system: bazFn })
-ecs.tick(30)  // foo systems fire first before other components
-
-ecs.callComponentSystemsLast('foo')
-ecs.tick(30)  // foo system now fires last
 ```
 
 ----

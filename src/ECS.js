@@ -5,12 +5,11 @@ var DataStore = require('./dataStore')
 
 
 
-/* *
- * 
- * @module ECS
- * @typicalname ecs
- * A light, *fast* Entity Component System in JS
- * 
+/*!
+ * ent-comp: a light, *fast* Entity Component System in JS
+ * @url      github.com/andyhall/ent-comp
+ * @author   Andy Hall <andy@fenomas.com>
+ * @license  MIT
 */
 
 

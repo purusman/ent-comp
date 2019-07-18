@@ -124,10 +124,13 @@ When your game ticks or renders, call the appropriate library methods,
 and each component system function will get passed a list of state objects
 for all the entities that have that component.
 
+Components can also define an `order` property (default `99`), to specify the order in which systems fire (lowest to highest).
+
 ```js
 ecs.createComponent({
 	name: 'hitPoints',
 	state: { hp: 100 },
+	order: 10,
 	system: function(dt, states) {
 		// states is an array of entity state objects
 		states.forEach(state => {
@@ -266,8 +269,8 @@ ecs.addComponent(id, 'foo', { vector3: [1,1,1] })
 
 ## Change list
 
- * 0.8.0
-   * Added `ecs.callComponentSystemsLast(compName)`
+ * 0.9.0
+   * Adds `order` property to component definitions
  * 0.7.0
    * Internals rebuilt and bugs fixed, should be no API changes
  * 0.6.0
