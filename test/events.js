@@ -149,42 +149,56 @@ tape('Systems', function (t) {
 tape('System order', function (t) {
 	var systemEvents = []
 	var renderEvents = []
-	var fooComp = {
-		name: 'foo',
-		state: {},
-		system: () => { systemEvents.push('foo') },
-		renderSystem: () => { renderEvents.push('foo') },
-	}
-	var barComp = {
-		name: 'bar',
-		state: {},
-		system: () => { systemEvents.push('bar') },
-		renderSystem: () => { renderEvents.push('bar') },
-	}
 	var ecs = new ECS()
-	ecs.createComponent(fooComp)
-	ecs.createComponent(barComp)
-	t.equals(systemEvents.length, 0, 'systems do not fire until tick')
-	t.equals(renderEvents.length, 0, 'render systems do not fire until render')
+	var comp1 = {
+		name: 'comp1',
+		order: 1,
+		system: () => { systemEvents.push(1) },
+		renderSystem: () => { renderEvents.push(1) },
+	}
+	var comp2 = {
+		name: 'comp2',
+		order: 2,
+		system: () => { systemEvents.push(2) },
+		renderSystem: () => { renderEvents.push(2) },
+	}
+	var comp3 = {
+		name: 'comp3',
+		order: 3,
+		system: () => { systemEvents.push(3) },
+		renderSystem: () => { renderEvents.push(3) },
+	}
 
-	ecs.tick()
-	t.equals(systemEvents.length, 2, 'systems fire after tick')
-	t.equals(systemEvents[0], 'foo', 'systems fire in order components added')
-	t.equals(systemEvents[1], 'bar', 'systems fire in order components added')
-	ecs.render()
-	t.equals(renderEvents.length, 2, 'render systems fire after render')
-	t.equals(renderEvents[0], 'foo', 'render systems fire in order components added')
-	t.equals(renderEvents[1], 'bar', 'render systems fire in order components added')
+	function check(res) {
+		var str = res.join()
+		ecs.tick()
+		t.equals(systemEvents.join(), str, 'systems order: ' + str)
+		ecs.render()
+		t.equals(renderEvents.join(), str, 'render systems order: ' + str)
+		systemEvents.length = 0
+		renderEvents.length = 0
+	}
 
-	systemEvents.length = 0
-	renderEvents.length = 0
-	ecs.callComponentSystemsLast('foo')
-	ecs.tick()
-	t.equals(systemEvents[0], 'bar', 'systems fire in updated order')
-	t.equals(systemEvents[1], 'foo', 'systems fire in updated order')
-	ecs.render()
-	t.equals(renderEvents[0], 'bar', 'render systems fire in updated order')
-	t.equals(renderEvents[1], 'foo', 'render systems fire in updated order')
+	ecs.createComponent(comp2)
+	ecs.createComponent(comp3)
+	check([2, 3])
+
+	ecs.createComponent(comp1)
+	check([1, 2, 3])
+
+	ecs.deleteComponent(comp2.name)
+	check([1, 3])
+
+	ecs.deleteComponent(comp1.name)
+	ecs.createComponent(comp2)
+	check([2, 3])
+
+	ecs.createComponent(comp1)
+	ecs.deleteComponent(comp2.name)
+	ecs.deleteComponent(comp3.name)
+	ecs.createComponent(comp3)
+	ecs.createComponent(comp2)
+	check([1, 2, 3])
 
 	t.end()
 })

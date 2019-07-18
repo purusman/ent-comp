@@ -385,7 +385,6 @@ tape('hasComponent accessor', function (t) {
 tape('Complex state objects', function (t) {
 	var ecs = new ECS()
 
-	function MyClass() { }
 	var comp = {
 		name: 'foo',
 		state: {
@@ -415,7 +414,6 @@ tape('Complex state objects', function (t) {
 tape('State param has __id property', function (t) {
 	var ecs = new ECS()
 
-	function MyClass() { }
 	var comp = {
 		name: 'foo',
 		state: {}

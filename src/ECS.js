@@ -141,6 +141,7 @@ function ECS() {
 	 * var comp = {
 	 * 	 name: 'some-unique-string',
 	 * 	 state: {},
+	 * 	 order: 99,
 	 * 	 onAdd:        function(id, state){ },
 	 * 	 onRemove:     function(id, state){ },
 	 * 	 system:       function(dt, states){ },
@@ -168,6 +169,7 @@ function ECS() {
 		// rebuild definition object for monomorphism
 		var internalDef = {}
 		internalDef.name = name
+		internalDef.order = isNaN(compDefn.order) ? 99 : compDefn.order
 		internalDef.state = compDefn.state || {}
 		internalDef.onAdd = compDefn.onAdd || null
 		internalDef.onRemove = compDefn.onRemove || null
@@ -178,8 +180,14 @@ function ECS() {
 		components[name] = internalDef
 		storage[name] = DataStore.create()
 
-		if (internalDef.system) systems.push(name)
-		if (internalDef.renderSystem) renderSystems.push(name)
+		if (internalDef.system) {
+			systems.push(name)
+			systems.sort((a, b) => components[a].order - components[b].order)
+		}
+		if (internalDef.renderSystem) {
+			renderSystems.push(name)
+			renderSystems.sort((a, b) => components[a].order - components[b].order)
+		}
 
 		return name
 	}
@@ -439,9 +447,12 @@ function ECS() {
 	 * The optional parameter simply gets passed to the system functions. 
 	 * It's meant to be a timestep, but can be used (or not used) as you like.    
 	 * 
+	 * If components have an `order` property, they'll get called in that order
+	 * (lowest to highest). Component order defaults to `99`.
 	 * ```js
 	 * ecs.createComponent({
 	 * 	name: foo,
+	 * 	order: 1,
 	 * 	system: function(dt, states) {
 	 * 		// states is the same array you'd get from #getStatesList()
 	 * 		states.forEach(state => {
@@ -476,6 +487,7 @@ function ECS() {
 	 * ```js
 	 * ecs.createComponent({
 	 * 	name: foo,
+	 * 	order: 5,
 	 * 	renderSystem: function(dt, states) {
 	 * 		// states is the same array you'd get from #getStatesList()
 	 * 	}
@@ -537,39 +549,6 @@ function ECS() {
 		return self
 	}
 
-
-
-
-	/**
-	 * Moves a given component to the end of the systems-calling order.
-	 * 
-	 * ```js
-	 * ecs.createComponent({ name: 'foo', system: fooFn })
-	 * ecs.createComponent({ name: 'bar', system: barFn })
-	 * ecs.createComponent({ name: 'baz', system: bazFn })
-	 * ecs.tick(30)  // foo systems fire first before other components
-	 * 
-	 * ecs.callComponentSystemsLast('foo')
-	 * ecs.tick(30)  // foo system now fires last
-	 * ```
-	 */
-	this.callComponentSystemsLast = function (compName) {
-		var i = systems.indexOf(compName)
-		if (i > -1) {
-			var sys = systems[i]
-			systems.splice(i, 1)
-			systems.push(sys)
-		}
-
-		var j = renderSystems.indexOf(compName)
-		if (j > -1) {
-			var ren = renderSystems[j]
-			renderSystems.splice(j, 1)
-			renderSystems.push(ren)
-		}
-
-		return self
-	}
 
 
 
