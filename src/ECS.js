@@ -70,6 +70,11 @@ function ECS() {
 	var deferredMultiCompRemovals = []
 
 
+	// add references to internals, for debugging/hacking
+	this._storage = storage
+	this._systems = systems
+	this._renderSystems = renderSystems
+
 
 	/*
 	 * 
