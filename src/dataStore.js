@@ -1,4 +1,3 @@
-'use strict'
 
 
 /*
@@ -9,49 +8,104 @@
  * 
  *      Note this is a dumb store, it doesn't check any inputs at all.
  *      It also assumes every stored data object is stored like:
- *          DataStore.add(data, 37, {__id:37} )
+ *          dataStore.add(37, {__id:37} )
  * 
 */
 
 
-module.exports = {
+module.exports = class DataStore {
 
-    create: function () {
-        return {
-            list: [],
-            hash: {},
-            _map: {},
-        }
-    },
-
-
-    add: function (data, id, object) {
-        data.list.push(object)
-        data.hash[id] = object
-        data._map[id] = data.list.length - 1
-    },
+    constructor() {
+        this.list = []
+        this.hash = {}
+        this._map = {}
+        this._pendingRemovals = []
+    }
 
 
-    remove: function (data, id) {
-        // splice out of list
-        var index = data._map[id]
-        if (index === data.list.length - 1) {
-            data.list.pop()
+    // add a new state object
+    add(id, stateObject) {
+        if (typeof this._map[id] === 'number') {
+            // this happens if id is removed/readded without flushing
+            var index = this._map[id]
+            this.hash[id] = stateObject
+            this.list[index] = stateObject
         } else {
-            // replace element to be spliced with element from end
-            var movedItem = data.list.pop()
-            data.list[index] = movedItem
-            // watch out, this bit breaks encapsulation by assuming object's contents
-            // alternative would be to look through map for movedID's index
-            var movedID = movedItem.__id || movedItem[0].__id
-            data._map[movedID] = index
+            this._map[id] = this.list.length
+            this.hash[id] = stateObject
+            this.list.push(stateObject)
         }
-        // finish
-        delete data.hash[id]
-        delete data._map[id]
-    },
+    }
 
 
+    // remove - nulls the state object, actual removal comes later
+    remove(id) {
+        var index = this._map[id]
+        this.hash[id] = null
+        this.list[index] = null
+        this._pendingRemovals.push(id)
+    }
+
+
+    // just sever references
+    dispose() {
+        this.list = null
+        this.hash = null
+        this._map = null
+        this._pendingRemovals.length = 0
+    }
+
+
+    // deletes removed objects from data structures
+    flush() {
+        for (var i = 0; i < this._pendingRemovals.length; i++) {
+            var id = this._pendingRemovals[i]
+            // removal might have been reversed, or already handled
+            if (this.hash[id] !== null) continue
+            removeElement(this, id)
+        }
+        this._pendingRemovals.length = 0
+    }
+
+}
+
+
+/*
+ * 
+ *      actual remove / cleanup logic, fixes up data structures after removal
+ * 
+ * 
+*/
+
+
+function removeElement(data, id) {
+    // current location of this element in the list
+    var index = data._map[id]
+    // for hash and map, just delete by id
+    delete data.hash[id]
+    delete data._map[id]
+    // now splice - either by popping or by swapping with final element
+    if (index === data.list.length - 1) {
+        data.list.pop()
+    } else {
+        // swap last item with the one we're removing
+        var swapped = data.list.pop()
+        data.list[index] = swapped
+        // need to fix _map for swapped item
+        if (swapped === null || swapped[0] === null) {
+            // slowest but rarest case - swapped item is ALSO pending removal
+            var prevIndex = data.list.length
+            for (var swapID in data._map) {
+                if (data._map[swapID] === prevIndex) {
+                    data._map[swapID] = index
+                    return
+                }
+            }
+        } else {
+            var swappedID = swapped.__id || swapped[0].__id
+            data._map[swappedID] = index
+        }
+    }
 }
 
 

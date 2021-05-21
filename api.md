@@ -36,8 +36,8 @@ Hash of component definitions. Also aliased to `comps`.
 ```js
 var comp = { name: 'foo' }
 ecs.createComponent(comp)
-ecs.components['foo'] === comp // true
-ecs.comps['foo']               // same
+ecs.components['foo'] === comp  // true
+ecs.comps['foo']                // same
 ```
 
 ----
@@ -59,14 +59,10 @@ var id2 = ecs.createEntity([ 'some-component', 'other-component' ])
 <a name="module_ECS+deleteEntity"></a>
 
 ## ecs.deleteEntity()
-Deletes an entity, which in practice just means removing all its components.
-By default the actual removal is deferred (since entities often
-delete themselves from their system function, etc).
-Pass a truthy second parameter to force immediate removal.
+Deletes an entity, which in practice means removing all its components.
 
 ```js
 ecs.deleteEntity(id)
-ecs.deleteEntity(id2, true) // deletes immediately
 ```
 
 ----
@@ -85,11 +81,11 @@ var comp = {
 	 name: 'some-unique-string',
 	 state: {},
 	 order: 99,
-	 onAdd:        function(id, state){ },
-	 onRemove:     function(id, state){ },
-	 system:       function(dt, states){ },
-	 renderSystem: function(dt, states){ },
 	 multi: false,
+	 onAdd:        (id, state) => { },
+	 onRemove:     (id, state) => { },
+	 system:       (dt, states) => { },
+	 renderSystem: (dt, states) => { },
 }
 
 var name = ecs.createComponent( comp )
@@ -109,12 +105,13 @@ For multi-components, APIs that would normally return a state object
 Deletes the component definition with the given name. 
 First removes the component from all entities that have it.
 
-(This probably shouldn't be called in real-world usage - 
-better to define all components when you begin and leave them be - 
-but it's here if you need it.)
+**Note:** This API shouldn't be necessary in most real-world usage - 
+you should set up all your components during init and then leave them be.
+But it's useful if, say, you receive an ECS from another library and 
+you need to replace its components.
 
 ```js
-ecs.deleteComponent( comp.name )
+ecs.deleteComponent( 'some-component' )
 ```
 
 ----
@@ -127,10 +124,10 @@ Adds a component to an entity, optionally initializing the state object.
 ```js
 ecs.createComponent({
 	name: 'foo',
-	state: { val: 0 }
+	state: { val: 1 }
 })
-ecs.addComponent(id, 'foo', {val:20})
-ecs.getState(id, 'foo').val // 20
+ecs.addComponent(id1, 'foo')             // use default state
+ecs.addComponent(id2, 'foo', { val:2 })  // pass in state data
 ```
 
 ----
@@ -141,8 +138,8 @@ ecs.getState(id, 'foo').val // 20
 Checks if an entity has a component.
 
 ```js
-ecs.addComponent(id, 'comp-name')
-ecs.hasComponent(id, 'comp-name') // true
+ecs.addComponent(id, 'foo')
+ecs.hasComponent(id, 'foo')       // true
 ```
 
 ----
@@ -150,13 +147,12 @@ ecs.hasComponent(id, 'comp-name') // true
 <a name="module_ECS+removeComponent"></a>
 
 ## ecs.removeComponent()
-Removes a component from an entity, deleting any state data.
+Removes a component from an entity, triggering the component's 
+`onRemove` handler, and then deleting any state data.
 
 ```js
-ecs.removeComponent(id, 'foo', true) // final arg means "immediately"
-ecs.hasComponent(id, 'foo')          // false
-ecs.removeComponent(id, 'bar')
-ecs.hasComponent(id, 'bar')          // true, removal is deferred by default
+ecs.removeComponent(id, 'foo')
+ecs.hasComponent(id, 'foo')     	 // false
 ```
 
 ----
@@ -173,8 +169,8 @@ ecs.createComponent({
 	state: { val: 0 }
 })
 ecs.addComponent(id, 'foo')
-ecs.getState(id, 'foo').val   // 0
-ecs.getState(id, 'foo').__id  // equals id
+ecs.getState(id, 'foo').val       // 0
+ecs.getState(id, 'foo').__id      // equals id
 ```
 
 ----
@@ -189,8 +185,10 @@ Don't add or remove elements from the returned list!
 ```js
 var arr = ecs.getStatesList('foo')
 // returns something shaped like:
-//   [ {__id:0, x:1}, 
-//     {__id:7, x:2}  ]
+//   [
+//     {__id:0, x:1},
+//     {__id:7, x:2},
+//   ]
 ```
 
 ----
@@ -198,7 +196,7 @@ var arr = ecs.getStatesList('foo')
 <a name="module_ECS+getStateAccessor"></a>
 
 ## ecs.getStateAccessor()
-Returns a `getState`-like accessor bound to a given component name. 
+Makes a `getState`-like accessor bound to a given component. 
 The accessor is faster than `getState`, so you may want to create 
 an accessor for any component you'll be accessing a lot.
 
@@ -207,9 +205,10 @@ ecs.createComponent({
 	name: 'size',
 	state: { val: 0 }
 })
-ecs.addComponent(id, 'size')
-var getSize = ecs.getStateAccessor('size')
-getSize(id).val // 0
+var getEntitySize = ecs.getStateAccessor('size')
+// ...
+ecs.addComponent(id, 'size', { val:123 })
+getEntitySize(id).val      // 123
 ```
 
 ----
@@ -217,15 +216,16 @@ getSize(id).val // 0
 <a name="module_ECS+getComponentAccessor"></a>
 
 ## ecs.getComponentAccessor()
-Returns a `hasComponent`-like accessor function bound to a given component name. 
+Makes a `hasComponent`-like accessor function bound to a given component. 
 The accessor is much faster than `hasComponent`.
 
 ```js
 ecs.createComponent({
 	name: 'foo',
 })
-ecs.addComponent(id, 'foo')
 var hasFoo = ecs.getComponentAccessor('foo')
+// ...
+ecs.addComponent(id, 'foo')
 hasFoo(id) // true
 ```
 
@@ -283,14 +283,17 @@ ecs.render(1000/60)
 <a name="module_ECS+removeMultiComponent"></a>
 
 ## ecs.removeMultiComponent()
-Removes a particular state instance of a multi-component.
-Pass a final truthy argument to make this happen synchronously - 
-but be careful, that will splice an element out of the multi-component array,
-changing the indexes of subsequent elements.
+Removes one particular instance of a multi-component.
+To avoid breaking loops, the relevant state object will get nulled
+immediately, and spliced from the states array later when safe 
+(after the current tick/render/animationFrame).
 
 ```js
+// where component 'foo' is a multi-component
 ecs.getState(id, 'foo')   // [ state1, state2, state3 ]
-ecs.removeMultiComponent(id, 'foo', 1, true)  // true means: immediately
+ecs.removeMultiComponent(id, 'foo', 1)
+ecs.getState(id, 'foo')   // [ state1, null, state3 ]
+// one JS event loop later...
 ecs.getState(id, 'foo')   // [ state1, state3 ]
 ```
 

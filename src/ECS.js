@@ -1,4 +1,3 @@
-'use strict'
 
 module.exports = ECS
 var DataStore = require('./dataStore')
@@ -36,8 +35,8 @@ function ECS() {
 	 * ```js
 	 * var comp = { name: 'foo' }
 	 * ecs.createComponent(comp)
-	 * ecs.components['foo'] === comp // true
-	 * ecs.comps['foo']               // same
+	 * ecs.components['foo'] === comp  // true
+	 * ecs.comps['foo']                // same
 	 * ```
 	*/
 	this.components = {}
@@ -57,23 +56,27 @@ function ECS() {
 	var UID = 1
 
 	// Storage for all component state data:
-	// storage['component-name'] = { hash:{}, list:[] }
+	// storage['component-name'] = DataStore instance
 	var storage = {}
 
 	// flat arrays of names of components with systems
 	var systems = []
 	var renderSystems = []
 
-	// queues for deferred operations
-	var deferredEntityRemovals = []
-	var deferredCompRemovals = []
-	var deferredMultiCompRemovals = []
+	// flags and arrays for deferred cleanup of removed stuff
+	var deferrals = {
+		timeout: false,
+		removals: [],
+		multiComps: [],
+	}
 
-
-	// add references to internals, for debugging/hacking
+	// expose references to internals for debugging or hacking
 	this._storage = storage
 	this._systems = systems
 	this._renderSystems = renderSystems
+
+
+
 
 
 	/*
@@ -99,7 +102,7 @@ function ECS() {
 	*/
 	this.createEntity = function (compList) {
 		var id = UID++
-		if (compList && compList.length) {
+		if (Array.isArray(compList)) {
 			compList.forEach(compName => self.addComponent(id, compName))
 		}
 		return id
@@ -108,23 +111,21 @@ function ECS() {
 
 
 	/**
-	 * Deletes an entity, which in practice just means removing all its components.
-	 * By default the actual removal is deferred (since entities often
-	 * delete themselves from their system function, etc).
-	 * Pass a truthy second parameter to force immediate removal.
+	 * Deletes an entity, which in practice means removing all its components.
 	 * 
 	 * ```js
 	 * ecs.deleteEntity(id)
-	 * ecs.deleteEntity(id2, true) // deletes immediately
 	 * ```
 	*/
-	this.deleteEntity = function (entID, immediately) {
-		if (immediately) {
-			deleteEntityNow(entID)
-		} else {
-			deferredEntityRemovals.push(entID)
-			makeDeferralTimeout()
-		}
+	this.deleteEntity = function (entID) {
+		// loop over all components and maybe remove them
+		// this avoids needing to keep a list of components-per-entity
+		Object.keys(storage).forEach(compName => {
+			var data = storage[compName]
+			if (data.hash[entID]) {
+				removeComponent(entID, compName)
+			}
+		})
 		return self
 	}
 
@@ -146,11 +147,11 @@ function ECS() {
 	 * 	 name: 'some-unique-string',
 	 * 	 state: {},
 	 * 	 order: 99,
-	 * 	 onAdd:        function(id, state){ },
-	 * 	 onRemove:     function(id, state){ },
-	 * 	 system:       function(dt, states){ },
-	 * 	 renderSystem: function(dt, states){ },
 	 * 	 multi: false,
+	 * 	 onAdd:        (id, state) => { },
+	 * 	 onRemove:     (id, state) => { },
+	 * 	 system:       (dt, states) => { },
+	 * 	 renderSystem: (dt, states) => { },
 	 * }
 	 * 
 	 * var name = ecs.createComponent( comp )
@@ -173,16 +174,18 @@ function ECS() {
 		// rebuild definition object for monomorphism
 		var internalDef = {}
 		internalDef.name = name
+		internalDef.multi = !!compDefn.multi
 		internalDef.order = isNaN(compDefn.order) ? 99 : compDefn.order
 		internalDef.state = compDefn.state || {}
 		internalDef.onAdd = compDefn.onAdd || null
 		internalDef.onRemove = compDefn.onRemove || null
 		internalDef.system = compDefn.system || null
 		internalDef.renderSystem = compDefn.renderSystem || null
-		internalDef.multi = !!compDefn.multi
 
 		components[name] = internalDef
-		storage[name] = DataStore.create()
+		storage[name] = new DataStore()
+		storage[name]._pendingMultiCleanup = false
+		storage[name]._multiCleanupIDs = (internalDef.multi) ? [] : null
 
 		if (internalDef.system) {
 			systems.push(name)
@@ -204,21 +207,24 @@ function ECS() {
 	 * Deletes the component definition with the given name. 
 	 * First removes the component from all entities that have it.
 	 * 
-	 * (This probably shouldn't be called in real-world usage - 
-	 * better to define all components when you begin and leave them be - 
-	 * but it's here if you need it.)
+	 * **Note:** This API shouldn't be necessary in most real-world usage - 
+	 * you should set up all your components during init and then leave them be.
+	 * But it's useful if, say, you receive an ECS from another library and 
+	 * you need to replace its components.
 	 * 
 	 * ```js
-	 * ecs.deleteComponent( comp.name )
+	 * ecs.deleteComponent( 'some-component' )
 	 * ```
 	*/
 	this.deleteComponent = function (compName) {
 		var data = storage[compName]
 		if (!data) throw `Unknown component: ${compName}`
 
+		data.flush()
 		data.list.forEach(obj => {
+			if (!obj) return
 			var id = obj.__id || obj[0].__id
-			self.removeComponent(id, compName, true)
+			removeComponent(id, compName)
 		})
 
 		var i = systems.indexOf(compName)
@@ -226,8 +232,9 @@ function ECS() {
 		if (i > -1) systems.splice(i, 1)
 		if (j > -1) renderSystems.splice(j, 1)
 
-		delete components[compName]
+		storage[compName].dispose()
 		delete storage[compName]
+		delete components[compName]
 
 		return self
 	}
@@ -241,10 +248,10 @@ function ECS() {
 	 * ```js
 	 * ecs.createComponent({
 	 * 	name: 'foo',
-	 * 	state: { val: 0 }
+	 * 	state: { val: 1 }
 	 * })
-	 * ecs.addComponent(id, 'foo', {val:20})
-	 * ecs.getState(id, 'foo').val // 20
+	 * ecs.addComponent(id1, 'foo')             // use default state
+	 * ecs.addComponent(id2, 'foo', { val:2 })  // pass in state data
 	 * ```
 	*/
 	this.addComponent = function (entID, compName, state) {
@@ -252,14 +259,10 @@ function ECS() {
 		var data = storage[compName]
 		if (!data) throw `Unknown component: ${compName}.`
 
-		// if the component is pending removal, remove it so it can be readded
-		var pendingRemoval = false
-		deferredCompRemovals.forEach(obj => {
-			if (obj.id === entID && obj.compName === compName) pendingRemoval = true
-		})
-		if (pendingRemoval) doDeferredComponentRemovals()
-
-		if (data.hash[entID] && !def.multi) throw `Entity ${entID} already has component: ${compName}.`
+		// treat adding an existing (non-multi-) component as an error
+		if (data.hash[entID] && !def.multi) {
+			throw `Entity ${entID} already has component: ${compName}.`
+		}
 
 		// create new component state object for this entity
 		var newState = Object.assign({}, { __id: entID }, def.state, state)
@@ -267,16 +270,16 @@ function ECS() {
 		// just in case passed-in state object had an __id property
 		newState.__id = entID
 
-		// add to dataStore - for multi components, may already be present
+		// add to data store - for multi components, may already be present
 		if (def.multi) {
 			var statesArr = data.hash[entID]
 			if (!statesArr) {
 				statesArr = []
-				DataStore.add(data, entID, statesArr)
+				data.add(entID, statesArr)
 			}
 			statesArr.push(newState)
 		} else {
-			DataStore.add(data, entID, newState)
+			data.add(entID, newState)
 		}
 
 		// call handler and return
@@ -291,15 +294,15 @@ function ECS() {
 	 * Checks if an entity has a component.
 	 * 
 	 * ```js
-	 * ecs.addComponent(id, 'comp-name')
-	 * ecs.hasComponent(id, 'comp-name') // true
+	 * ecs.addComponent(id, 'foo')
+	 * ecs.hasComponent(id, 'foo')       // true
 	 * ```
 	*/
 
 	this.hasComponent = function (entID, compName) {
 		var data = storage[compName]
 		if (!data) throw `Unknown component: ${compName}.`
-		return (data.hash[entID] !== undefined)
+		return !!data.hash[entID]
 	}
 
 
@@ -307,36 +310,20 @@ function ECS() {
 
 
 	/**
-	 * Removes a component from an entity, deleting any state data.
+	 * Removes a component from an entity, triggering the component's 
+	 * `onRemove` handler, and then deleting any state data.
 	 * 
 	 * ```js
-	 * ecs.removeComponent(id, 'foo', true) // final arg means "immediately"
-	 * ecs.hasComponent(id, 'foo')          // false
-	 * ecs.removeComponent(id, 'bar')
-	 * ecs.hasComponent(id, 'bar')          // true, removal is deferred by default
+	 * ecs.removeComponent(id, 'foo')
+	 * ecs.hasComponent(id, 'foo')     	 // false
 	 * ```
 	*/
-	this.removeComponent = function (entID, compName, immediately) {
-		var def = components[compName]
+	this.removeComponent = function (entID, compName) {
 		var data = storage[compName]
 		if (!data) throw `Unknown component: ${compName}.`
 
-		// if comp isn't present, fail silently for multi or throw otherwise
-		if (!data.hash[entID]) {
-			if (def.multi) return self
-			else throw `Entity ${entID} does not have component: ${compName} to remove.`
-		}
-
-		// defer or remove
-		if (immediately) {
-			removeComponentNow(entID, compName)
-		} else {
-			deferredCompRemovals.push({
-				id: entID,
-				compName: compName,
-			})
-			makeDeferralTimeout()
-		}
+		// removal implementations at end
+		removeComponent(entID, compName)
 
 		return self
 	}
@@ -355,8 +342,8 @@ function ECS() {
 	 * 	state: { val: 0 }
 	 * })
 	 * ecs.addComponent(id, 'foo')
-	 * ecs.getState(id, 'foo').val   // 0
-	 * ecs.getState(id, 'foo').__id  // equals id
+	 * ecs.getState(id, 'foo').val       // 0
+	 * ecs.getState(id, 'foo').__id      // equals id
 	 * ```
 	*/
 
@@ -377,14 +364,17 @@ function ECS() {
 	 * ```js
 	 * var arr = ecs.getStatesList('foo')
 	 * // returns something shaped like:
-	 * //   [ {__id:0, x:1}, 
-	 * //     {__id:7, x:2}  ]
+	 * //   [
+	 * //     {__id:0, x:1},
+	 * //     {__id:7, x:2},
+	 * //   ]
 	 * ```  
 	*/
 
 	ECS.prototype.getStatesList = function (compName) {
 		var data = storage[compName]
 		if (!data) throw `Unknown component: ${compName}.`
+		doDeferredCleanup(data)
 		return data.list
 	}
 
@@ -392,7 +382,7 @@ function ECS() {
 
 
 	/**
-	 * Returns a `getState`-like accessor bound to a given component name. 
+	 * Makes a `getState`-like accessor bound to a given component. 
 	 * The accessor is faster than `getState`, so you may want to create 
 	 * an accessor for any component you'll be accessing a lot.
 	 * 
@@ -401,33 +391,33 @@ function ECS() {
 	 * 	name: 'size',
 	 * 	state: { val: 0 }
 	 * })
-	 * ecs.addComponent(id, 'size')
-	 * var getSize = ecs.getStateAccessor('size')
-	 * getSize(id).val // 0
+	 * var getEntitySize = ecs.getStateAccessor('size')
+	 * // ...
+	 * ecs.addComponent(id, 'size', { val:123 })
+	 * getEntitySize(id).val      // 123
 	 * ```  
 	*/
 
 	this.getStateAccessor = function (compName) {
 		if (!storage[compName]) throw `Unknown component: ${compName}.`
 		var hash = storage[compName].hash
-		return function (entID) {
-			return hash[entID]
-		}
+		return (id) => hash[id]
 	}
 
 
 
 
 	/**
-	 * Returns a `hasComponent`-like accessor function bound to a given component name. 
+	 * Makes a `hasComponent`-like accessor function bound to a given component. 
 	 * The accessor is much faster than `hasComponent`.
 	 * 
 	 * ```js
 	 * ecs.createComponent({
 	 * 	name: 'foo',
 	 * })
-	 * ecs.addComponent(id, 'foo')
 	 * var hasFoo = ecs.getComponentAccessor('foo')
+	 * // ...
+	 * ecs.addComponent(id, 'foo')
 	 * hasFoo(id) // true
 	 * ```  
 	*/
@@ -435,9 +425,7 @@ function ECS() {
 	this.getComponentAccessor = function (compName) {
 		if (!storage[compName]) throw `Unknown component: ${compName}.`
 		var hash = storage[compName].hash
-		return function (entID) {
-			return (hash[entID] !== undefined) // TODO
-		}
+		return (id) => !!hash[id]
 	}
 
 
@@ -469,13 +457,14 @@ function ECS() {
 	*/
 
 	this.tick = function (dt) {
-		runAllDeferredRemovals()
-		systems.forEach(compName => {
-			var list = storage[compName].list
+		doDeferredCleanup()
+		for (var i = 0; i < systems.length; i++) {
+			var compName = systems[i]
 			var comp = components[compName]
-			comp.system(dt, list)
-		})
-		runAllDeferredRemovals()
+			var data = storage[compName]
+			comp.system(dt, data.list)
+			doDeferredCleanup()
+		}
 		return self
 	}
 
@@ -501,13 +490,14 @@ function ECS() {
 	*/
 
 	this.render = function (dt) {
-		runAllDeferredRemovals()
-		renderSystems.forEach(compName => {
-			var list = storage[compName].list
+		doDeferredCleanup()
+		for (var i = 0; i < renderSystems.length; i++) {
+			var compName = renderSystems[i]
 			var comp = components[compName]
-			comp.renderSystem(dt, list)
-		})
-		runAllDeferredRemovals()
+			var data = storage[compName]
+			comp.renderSystem(dt, data.list)
+			doDeferredCleanup()
+		}
 		return self
 	}
 
@@ -515,40 +505,28 @@ function ECS() {
 
 
 	/**
-	 * Removes a particular state instance of a multi-component.
-	 * Pass a final truthy argument to make this happen synchronously - 
-	 * but be careful, that will splice an element out of the multi-component array,
-	 * changing the indexes of subsequent elements.
+	 * Removes one particular instance of a multi-component.
+	 * To avoid breaking loops, the relevant state object will get nulled
+	 * immediately, and spliced from the states array later when safe 
+	 * (after the current tick/render/animationFrame).
 	 * 
 	 * ```js
+	 * // where component 'foo' is a multi-component
 	 * ecs.getState(id, 'foo')   // [ state1, state2, state3 ]
-	 * ecs.removeMultiComponent(id, 'foo', 1, true)  // true means: immediately
+	 * ecs.removeMultiComponent(id, 'foo', 1)
+	 * ecs.getState(id, 'foo')   // [ state1, null, state3 ]
+	 * // one JS event loop later...
 	 * ecs.getState(id, 'foo')   // [ state1, state3 ]
 	 * ```
 	 */
-	this.removeMultiComponent = function (entID, compName, index, immediately) {
+	this.removeMultiComponent = function (entID, compName, index) {
 		var def = components[compName]
 		var data = storage[compName]
 		if (!data) throw `Unknown component: ${compName}.`
 		if (!def.multi) throw 'removeMultiComponent called on non-multi component'
 
-		// throw if comp isn't present, or multicomp isn't present at index
-		var statesArr = data.hash[entID]
-		if (!statesArr || !statesArr[index]) {
-			throw `Multicomponent ${compName} instance not found at index ${index}`
-		}
-
-		// index removals by object, in case indexes change later
-		var stateToRemove = statesArr[index]
-		if (immediately) {
-			removeMultiCompNow(entID, compName, stateToRemove)
-		} else {
-			deferredMultiCompRemovals.push({
-				id: entID,
-				compName: compName,
-				state: stateToRemove,
-			})
-		}
+		// removal implementations at end
+		removeMultiCompElement(entID, def, data, index)
 
 		return self
 	}
@@ -560,134 +538,133 @@ function ECS() {
 
 
 
+
+
+
+
+
 	/*
 	 * 
 	 * 
-	 *		internal implementation of various delete operations
+	 *		internal implementations of remove/delete operations
+	 * 		a bit hairy due to deferred cleanup, etc.
 	 * 
 	 * 
 	*/
 
 
-	// delete entity - meaning simply remove all its components
-	function deleteEntityNow(entID) {
-		// For now loop over all components
-		// Could speed this up by keeping a hash of components held by each entity?
-		Object.keys(storage).forEach(compName => {
-			var data = storage[compName]
-			if (data.hash[entID]) removeComponentNow(entID, compName)
-		})
-	}
-
-
 	// remove given component from an entity
-	function removeComponentNow(entID, compName) {
+	function removeComponent(entID, compName) {
 		var def = components[compName]
 		var data = storage[compName]
-		if (!data) return
-		if (!data.hash[entID]) return // probably got removed twice during deferral
+
+		// fail silently on all cases where removal target isn't present,
+		// since multiple pieces of logic often remove/delete simultaneously
+		var state = data.hash[entID]
+		if (!state) return
+
+		// null out data now, so overlapped remove events won't fire
+		data.remove(entID)
 
 		// call onRemove handler - on each instance for multi components
 		if (def.onRemove) {
 			if (def.multi) {
-				data.hash[entID].forEach(state => {
-					def.onRemove(entID, state)
+				state.forEach(state => {
+					if (state) def.onRemove(entID, state)
 				})
+				state.length = 0
 			} else {
-				def.onRemove(entID, data.hash[entID])
+				def.onRemove(entID, state)
 			}
 		}
 
-		// if multi, kill the states array to hopefully free the objects
-		if (def.multi) data.hash[entID].length = 0
-
-		// actual removal from data store
-		DataStore.remove(data, entID)
+		deferrals.removals.push(data)
+		pingDeferrals()
 	}
-
 
 
 	// remove one state from a multi component
-	function removeMultiCompNow(entID, compName, stateObj) {
-		var def = components[compName]
-		var data = storage[compName]
+	function removeMultiCompElement(entID, def, data, index) {
+		// if statesArr isn't present there's no work or cleanup to do
 		var statesArr = data.hash[entID]
 		if (!statesArr) return
 
-		var i = statesArr.indexOf(stateObj)
-		if (i < 0) return
-		if (def.onRemove) {
-			def.onRemove(entID, stateObj)
-		}
-		statesArr.splice(i, 1)
+		// as above, ignore cases where removal target doesn't exist
+		var state = statesArr[index]
+		if (!state) return
 
-		// if this leaves the states list empty, remove the whole component
-		if (statesArr.length === 0) {
-			removeComponentNow(entID, compName)
-		}
+		// null out element and fire event
+		statesArr[index] = null
+		if (def.onRemove) def.onRemove(entID, state)
+
+		deferrals.multiComps.push({ entID, data })
+		pingDeferrals()
 	}
 
 
 
 
+
+
+
+	// rigging
+	function pingDeferrals() {
+		if (deferrals.timeout) return
+		deferrals.timeout = true
+		setTimeout(deferralHandler, 1)
+	}
+
+	function deferralHandler() {
+		deferrals.timeout = false
+		doDeferredCleanup()
+	}
 
 
 	/*
 	 * 
-	 * 
-	 *		internals for handling deferrals
-	 * 
+	 *		general handling for deferred data cleanup
+	 * 			- removes null states if component is multi
+	 * 			- removes null entries from component dataStore
+	 * 		should be called at safe times - not during state loops
 	 * 
 	*/
 
-
-
-	// debouncer - called whenever a deferral is queued
-	function makeDeferralTimeout() {
-		if (deferralTimeoutPending) return
-		deferralTimeoutPending = true
-		setTimeout(function () {
-			deferralTimeoutPending = false
-			runAllDeferredRemovals()
-		}, 1)
-	}
-	var deferralTimeoutPending = false
-
-
-	// Ping all removal queues. 
-	// called before and after tick/render, and after deferrals are queued
-	function runAllDeferredRemovals() {
-		doDeferredComponentRemovals()
-		doDeferredMultiComponentRemovals()
-		doDeferredEntityRemovals()
-	}
-
-
-	// entities - queue of entity IDs
-	function doDeferredEntityRemovals() {
-		while (deferredEntityRemovals.length) {
-			var entID = deferredEntityRemovals.pop()
-			deleteEntityNow(entID)
+	function doDeferredCleanup() {
+		if (deferrals.multiComps.length) {
+			deferredMultiCompCleanup(deferrals.multiComps)
+		}
+		if (deferrals.removals.length) {
+			deferredComponentCleanup(deferrals.removals)
 		}
 	}
 
-
-	// components - queue of { id, compName }
-	function doDeferredComponentRemovals() {
-		while (deferredCompRemovals.length) {
-			var obj = deferredCompRemovals.pop()
-			removeComponentNow(obj.id, obj.compName)
+	// removes null elements from multi-comp state arrays
+	function deferredMultiCompCleanup(list) {
+		for (var i = 0; i < list.length; i++) {
+			var { entID, data } = list[i]
+			var statesArr = data.hash[entID]
+			if (!statesArr) continue
+			for (var j = 0; j < statesArr.length; j++) {
+				if (statesArr[j]) continue
+				statesArr.splice(j, 1)
+				j--
+			}
+			// if this leaves the states list empty, remove the whole component
+			if (statesArr.length === 0) {
+				data.remove(entID)
+				deferrals.removals.push(data)
+			}
 		}
+		list.length = 0
 	}
 
-
-	// multi components - queue of { id, compName, state }
-	function doDeferredMultiComponentRemovals(ecs) {
-		while (deferredMultiCompRemovals.length) {
-			var obj = deferredMultiCompRemovals.pop()
-			removeMultiCompNow(obj.id, obj.compName, obj.state)
-			obj.state = null
+	// flushes dataStore after components have been removed
+	function deferredComponentCleanup(list) {
+		for (var i = 0; i < list.length; i++) {
+			var data = list[i]
+			data.flush()
 		}
+		list.length = 0
 	}
 
 

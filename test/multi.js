@@ -1,4 +1,3 @@
-'use strict'
 
 var ECS = require('..')
 var tape = require('tape')
@@ -11,12 +10,10 @@ tape('Multi component basics', function (t) {
     var multi = { name: 'multi', multi: true }
     ecs.createComponent(normal)
 
-    t.doesNotThrow(function () { ecs.createComponent(multi) }, 'create multi component')
-
-    t.throws(function () { ecs.createComponent({ name: 'multi' }) }, 'overlapping multi/normal comps')
-    t.throws(function () { ecs.createComponent({ name: 'normal', multi: true }) }, 'overlapping multi/normal comps')
-
-    t.doesNotThrow(function () { ecs.removeComponent(id, multi.name) }, 'remove non-present multi comp')
+    t.doesNotThrow(() => { ecs.createComponent(multi) }, 'create multi component')
+    t.throws(() => { ecs.createComponent({ name: 'multi' }) }, 'overlapping multi/normal comps')
+    t.throws(() => { ecs.createComponent({ name: 'normal', multi: true }) }, 'overlapping multi/normal comps')
+    t.doesNotThrow(() => { ecs.removeComponent(id, multi.name) }, 'remove non-present multi comp')
 
     t.end()
 })
@@ -34,24 +31,24 @@ tape('Multi component adding / removing', function (t) {
     ecs.createComponent(comp)
 
     var result
-    t.doesNotThrow(function () { result = ecs.getState(id, comp.name) }, 'getState on empty multi comp')
+    t.doesNotThrow(() => { result = ecs.getState(id, comp.name) }, 'getState on empty multi comp')
     t.ok(!result, 'getState returned falsey')
 
-    t.doesNotThrow(function () { ecs.addComponent(id, comp.name) }, 'add multi comp')
+    t.doesNotThrow(() => { ecs.addComponent(id, comp.name) }, 'add multi comp')
 
-    t.doesNotThrow(function () { result = ecs.getState(id, comp.name) }, 'getState on multi comp')
+    t.doesNotThrow(() => { result = ecs.getState(id, comp.name) }, 'getState on multi comp')
     t.ok(result, 'getState  returned truthy')
     t.equals(result.length, 1, 'getState an array[1]')
     t.equals(result[0].value, 37, 'getState returned default state')
 
-    t.doesNotThrow(function () { ecs.removeComponent(id, comp.name, true) }, 'remove multi comp')
+    t.doesNotThrow(() => { ecs.removeComponent(id, comp.name) }, 'remove multi comp')
 
-    t.doesNotThrow(function () { result = ecs.getState(id, comp.name) }, 'getState on empty multi comp')
+    t.doesNotThrow(() => { result = ecs.getState(id, comp.name) }, 'getState on empty multi comp')
     t.ok(!result, 'getState returned falsey')
 
-    t.doesNotThrow(function () { ecs.addComponent(id, comp.name, { value: 2 }) }, 'add multi comp with state')
-    t.doesNotThrow(function () { ecs.addComponent(id, comp.name, { value: 3 }) }, 'add multi comp with state')
-    t.doesNotThrow(function () { result = ecs.getState(id, comp.name) }, 'getState on multi comp length 2')
+    t.doesNotThrow(() => { ecs.addComponent(id, comp.name, { value: 2 }) }, 'add multi comp with state')
+    t.doesNotThrow(() => { ecs.addComponent(id, comp.name, { value: 3 }) }, 'add multi comp with state')
+    t.doesNotThrow(() => { result = ecs.getState(id, comp.name) }, 'getState on multi comp length 2')
     t.equals(result.length, 2, 'getState an array[2]')
     var values = result.map(o => o.value)
     t.ok(values.includes(2), 'getState array included state.value = 2')
@@ -66,34 +63,33 @@ tape('Multi component remove by index', function (t) {
     var ecs = new ECS()
     var id = ecs.createEntity()
     var comp = {
-        name: 'multi-component',
+        name: 'foo',
         state: { value: 37 },
         multi: true,
     }
     ecs.createComponent(comp)
 
-    ecs.addComponent(id, comp.name, { value: 1 })
-    ecs.addComponent(id, comp.name, { value: 5 })
-    ecs.addComponent(id, comp.name, { value: 9 })
+    ecs.addComponent(id, 'foo', { value: 1 })
+    ecs.addComponent(id, 'foo', { value: 5 })
+    ecs.addComponent(id, 'foo', { value: 9 })
 
-    var states = ecs.getState(id, comp.name)
+    var states = ecs.getState(id, 'foo')
     t.equals(states.length, 3, 'multi comp states list')
 
-    t.doesNotThrow(function () { ecs.removeMultiComponent(id, comp.name, 1) }, 'removeMultiComp deferred')
-    t.equals(ecs.getState(id, comp.name).length, 3, 'deferred removal still pending')
-    t.doesNotThrow(function () { ecs.tick() }, 'tick with deferral')
-    t.equals(ecs.getState(id, comp.name).length, 2, 'deferred removal done')
+    t.doesNotThrow(() => { ecs.removeMultiComponent(id, 'foo', 1) }, 'removeMultiComp')
+    t.doesNotThrow(() => { ecs.removeMultiComponent(id, 'foo', 1) }, 'remove same multi twice')
+    t.false(ecs.getState(id, 'foo')[1], 'removeMultiComp')
+    t.doesNotThrow(() => { ecs.tick() }, 'tick after removal')
+    console.log('ticked')
 
-    t.doesNotThrow(function () { ecs.removeMultiComponent(id, comp.name, 0, true) }, 'removeMultiComp immediate')
-    t.equals(ecs.getState(id, comp.name).length, 1, 'immediate removal done')
-    t.equals(ecs.getState(id, comp.name)[0].value, 9, 'removals were correct')
+    t.equals(ecs.getState(id, 'foo').length, 2, 'removal is complete')
 
     t.end()
 })
 
 
 
-tape('Complex deferred multi component removal', function (t) {
+tape('Multi component removal', function (t) {
     var ecs = new ECS()
     var id = ecs.createEntity()
     var comp = {
@@ -104,7 +100,7 @@ tape('Complex deferred multi component removal', function (t) {
     ecs.createComponent(comp)
     for (var i = 0; i < 10; i++) ecs.addComponent(id, comp.name, { value: i })
 
-    t.doesNotThrow(function () {
+    t.doesNotThrow(() => {
         ecs.removeMultiComponent(id, comp.name, 2)
         ecs.removeMultiComponent(id, comp.name, 6)
         ecs.removeMultiComponent(id, comp.name, 0)
@@ -112,17 +108,20 @@ tape('Complex deferred multi component removal', function (t) {
         ecs.removeMultiComponent(id, comp.name, 4)
     }, 'multi removal in mixed order')
 
-    t.doesNotThrow(function () { ecs.tick() }, 'tick after mixed multi removal')
-    var states
-    t.doesNotThrow(function () { states = ecs.getState(id, comp.name) }, 'get states after mixed multi removal')
+    var states = ecs.getState(id, comp.name)
+    var expected = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1]
+    expected.forEach((val, i) => {
+        t.equals(!!val, !!states[i], 'multi state array after removals')
+    })
 
-    var values = states.map(state => state.value)
-    var ok = true
-    for (var j = 1; j < 10; j++) {
-        var shouldRemain = !!(j % 2)
-        if (shouldRemain !== values.includes(j)) ok = false
-    }
-    t.assert(ok, 'Multi values consistent after mixed removal')
+    ecs.tick()
+    var states2 = ecs.getState(id, comp.name)
+    t.equals(5, states2.length, 'multi state array after tick')
+
+    var expectedVals = [1, 3, 5, 7, 9]
+    expectedVals.forEach((val, i) => {
+        t.equals(val, states[i].value, 'multi state values after removals')
+    })
 
     t.end()
 })
@@ -131,47 +130,55 @@ tape('Complex deferred multi component removal', function (t) {
 
 
 
-tape('Complex multi component entity removal', function (t) {
+tape('Multi-component overlapping removals', function (t) {
     var ecs = new ECS()
+    var id = ecs.createEntity()
+    var removes = 0
     var comp = {
-        name: 'multi-component',
+        name: 'foo',
         state: { value: 37 },
         multi: true,
+        onRemove: () => { removes++ },
     }
     ecs.createComponent(comp)
+    for (var i = 0; i < 10; i++) ecs.addComponent(id, 'foo', { value: i })
 
-    // populate
-    var ids = Array.from(Array(25)).map(($, i) => i + 1)
-    ids.forEach(id => ecs.addComponent(id, comp.name, { value: id }))
+    ecs.removeMultiComponent(id, 'foo', 2)
+    ecs.removeMultiComponent(id, 'foo', 8)
+    ecs.removeMultiComponent(id, 'foo', 5)
+    t.equals(3, removes, 'multi comp onRemoves')
+    t.doesNotThrow(() => { ecs.removeComponent(id, 'foo') }, 'remove comp after multi removes')
+    t.equals(10, removes, 'multi comp onRemoves')
+    t.doesNotThrow(() => { ecs.tick() }, 'tick after multi removes')
 
-    // remove some components, immediately or not
-    var toRemove = [21, 6, 12, 19, 11, 23, 14, 7, 8, 18, 4, 3, 20, 10, 15, 16, 2]
-    t.doesNotThrow(function () {
-        toRemove.forEach((id, i) => {
-            if (i % 2 === 0) {
-                ecs.deleteEntity(id, true)
-            } else {
-                ecs.deleteEntity(id)
-            }
-            if (i % 4 === 0) ecs.tick()
-        })
-    }, `Mixed multi-comp entity deletions with tick`)
 
-    t.doesNotThrow(function () { ecs.tick() }, `Tick after mixed ent delete with multi-comp`)
+    ecs.addComponent(5, 'foo')
+    ecs.addComponent(6, 'foo')
+    ecs.addComponent(7, 'foo')
+    t.doesNotThrow(() => { ecs.removeMultiComponent(7, 'foo', 0) }, 'index removal')
+    t.doesNotThrow(() => { ecs.removeComponent(6, 'foo') }, 'regular removal')
+    t.doesNotThrow(() => { ecs.removeComponent(5, 'foo') }, 'regular removal')
+    t.doesNotThrow(() => { ecs.removeComponent(7, 'foo') }, 'regular removal')
+    t.doesNotThrow(() => { ecs.tick() }, 'tick after redundant removals')
 
-    // check results
-    var states
-    var ok = true
-    t.doesNotThrow(function () {
-        ids.forEach(id => {
-            states = ecs.getState(id, comp.name)
-            if (toRemove.includes(id)) {
-                if (states) ok = false
-            } else {
-                if (!(states && (states[0].value === id))) ok = false
-            }
-        })
-    }, 'State accesses after mixed ent deletes with multi-comp')
+    ecs.addComponent(5, 'foo')
+    ecs.addComponent(6, 'foo')
+    ecs.addComponent(7, 'foo')
+    t.doesNotThrow(() => { ecs.removeMultiComponent(6, 'foo', 0) }, 'index removal')
+    t.doesNotThrow(() => { ecs.removeComponent(7, 'foo') }, 'regular removal')
+    t.doesNotThrow(() => { ecs.removeComponent(6, 'foo') }, 'regular removal')
+    t.doesNotThrow(() => { ecs.removeComponent(5, 'foo') }, 'regular removal')
+    t.doesNotThrow(() => { ecs.tick() }, 'tick after redundant removals')
+
+    ecs.addComponent(5, 'foo')
+    ecs.addComponent(6, 'foo')
+    ecs.addComponent(7, 'foo')
+    t.doesNotThrow(() => { ecs.removeMultiComponent(5, 'foo', 0) }, 'index removal')
+    t.doesNotThrow(() => { ecs.removeComponent(6, 'foo') }, 'regular removal')
+    t.doesNotThrow(() => { ecs.removeComponent(7, 'foo') }, 'regular removal')
+    t.doesNotThrow(() => { ecs.removeComponent(5, 'foo') }, 'regular removal')
+    t.doesNotThrow(() => { ecs.tick() }, 'tick after redundant removals')
+
 
     t.end()
 })
@@ -213,10 +220,10 @@ tape('Multi component systems', function (t) {
     ecs.addComponent(id, comp.name, { value: 42 })
     ecs.addComponent(id, comp.name, { value: 17 })
 
-    t.doesNotThrow(function () { ecs.tick(1) }, 'tick with multi comp')
+    t.doesNotThrow(() => { ecs.tick(1) }, 'tick with multi comp')
     t.equals(systemAccumulator, 37 + 42 + 17, 'multi comp system works')
 
-    t.doesNotThrow(function () { ecs.render(1) }, 'render with multi comp')
+    t.doesNotThrow(() => { ecs.render(1) }, 'render with multi comp')
     t.equals(renderAccumulator, (37 + 42 + 17) / 2, 'multi comp renderSystem works')
 
     t.end()
