@@ -371,7 +371,7 @@ function ECS() {
 	 * ```  
 	*/
 
-	ECS.prototype.getStatesList = function (compName) {
+	this.getStatesList = function (compName) {
 		var data = storage[compName]
 		if (!data) throw `Unknown component: ${compName}.`
 		doDeferredCleanup(data)
