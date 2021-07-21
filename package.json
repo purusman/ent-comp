@@ -21,10 +21,7 @@
   ],
   "author": "Andy Hall",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/andyhall/ent-comp"
-  },
+  "repository": "github:fenomas/ent-comp",
   "devDependencies": {
     "fen-bench": "^0.3.0",
     "jsdoc-to-markdown": "^7.0.1",

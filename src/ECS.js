@@ -6,7 +6,7 @@ var DataStore = require('./dataStore')
 
 /*!
  * ent-comp: a light, *fast* Entity Component System in JS
- * @url      github.com/andyhall/ent-comp
+ * @url      github.com/fenomas/ent-comp
  * @author   Andy Hall <andy@fenomas.com>
  * @license  MIT
 */

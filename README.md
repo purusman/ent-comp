@@ -4,7 +4,7 @@ A light, *fast* entity-component system in JS with no dependencies.
 
 ## Overview
 
-An [Entity Component System](http://vasir.net/blog/game-development/how-to-build-entity-component-system-in-javascript) 
+An [Entity Component System](https://en.wikipedia.org/wiki/Entity_component_system) 
 (ECS) is a programming construct that solves a very common 
 problem in gamedev. It lets you easily model dynamic systems 
 where the entities are difficult to describe with OO-style inheritance.
@@ -25,7 +25,7 @@ To use as a dependency:
 To hack on it:
 
 ```sh
-git clone https://github.com/andyhall/ent-comp.git
+git clone https://github.com/fenomas/ent-comp.git
 cd ent-comp
 npm install
 npm test         # run tests
@@ -266,7 +266,7 @@ ecs.addComponent(id, 'foo', { vector3: [1,1,1] })
 
 ----
 
-### Author: https://github.com/andyhall
+### Author: https://github.com/fenomas
 
 ### License: MIT
 
