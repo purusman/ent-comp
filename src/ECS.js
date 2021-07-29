@@ -164,12 +164,12 @@ function ECS() {
 	 * (like `getState`) will instead return an array of them.
 	*/
 	this.createComponent = function (compDefn) {
-		if (!compDefn) throw 'Missing component definition'
+		if (!compDefn) throw new Error('Missing component definition')
 		var name = compDefn.name
-		if (!name) throw 'Component definition must have a name property.'
-		if (typeof name !== 'string') throw 'Component name must be a string.'
-		if (name === '') throw 'Component name must be a non-empty string.'
-		if (storage[name]) throw `Component ${name} already exists.`
+		if (!name) throw new Error('Component definition must have a name property.')
+		if (typeof name !== 'string') throw new Error('Component name must be a string.')
+		if (name === '') throw new Error('Component name must be a non-empty string.')
+		if (storage[name]) throw new Error(`Component ${name} already exists.`)
 
 		// rebuild definition object for monomorphism
 		var internalDef = {}
@@ -218,7 +218,7 @@ function ECS() {
 	*/
 	this.deleteComponent = function (compName) {
 		var data = storage[compName]
-		if (!data) throw `Unknown component: ${compName}`
+		if (!data) throw new Error(`Unknown component: ${compName}`)
 
 		data.flush()
 		data.list.forEach(obj => {
@@ -257,11 +257,11 @@ function ECS() {
 	this.addComponent = function (entID, compName, state) {
 		var def = components[compName]
 		var data = storage[compName]
-		if (!data) throw `Unknown component: ${compName}.`
+		if (!data) throw new Error(`Unknown component: ${compName}.`)
 
 		// treat adding an existing (non-multi-) component as an error
 		if (data.hash[entID] && !def.multi) {
-			throw `Entity ${entID} already has component: ${compName}.`
+			throw new Error(`Entity ${entID} already has component: ${compName}.`)
 		}
 
 		// create new component state object for this entity
@@ -301,7 +301,7 @@ function ECS() {
 
 	this.hasComponent = function (entID, compName) {
 		var data = storage[compName]
-		if (!data) throw `Unknown component: ${compName}.`
+		if (!data) throw new Error(`Unknown component: ${compName}.`)
 		return !!data.hash[entID]
 	}
 
@@ -320,7 +320,7 @@ function ECS() {
 	*/
 	this.removeComponent = function (entID, compName) {
 		var data = storage[compName]
-		if (!data) throw `Unknown component: ${compName}.`
+		if (!data) throw new Error(`Unknown component: ${compName}.`)
 
 		// removal implementations at end
 		removeComponent(entID, compName)
@@ -349,7 +349,7 @@ function ECS() {
 
 	this.getState = function (entID, compName) {
 		var data = storage[compName]
-		if (!data) throw `Unknown component: ${compName}.`
+		if (!data) throw new Error(`Unknown component: ${compName}.`)
 		return data.hash[entID]
 	}
 
@@ -373,7 +373,7 @@ function ECS() {
 
 	this.getStatesList = function (compName) {
 		var data = storage[compName]
-		if (!data) throw `Unknown component: ${compName}.`
+		if (!data) throw new Error(`Unknown component: ${compName}.`)
 		doDeferredCleanup(data)
 		return data.list
 	}
@@ -399,7 +399,7 @@ function ECS() {
 	*/
 
 	this.getStateAccessor = function (compName) {
-		if (!storage[compName]) throw `Unknown component: ${compName}.`
+		if (!storage[compName]) throw new Error(`Unknown component: ${compName}.`)
 		var hash = storage[compName].hash
 		return (id) => hash[id]
 	}
@@ -423,7 +423,7 @@ function ECS() {
 	*/
 
 	this.getComponentAccessor = function (compName) {
-		if (!storage[compName]) throw `Unknown component: ${compName}.`
+		if (!storage[compName]) throw new Error(`Unknown component: ${compName}.`)
 		var hash = storage[compName].hash
 		return (id) => !!hash[id]
 	}
@@ -523,7 +523,7 @@ function ECS() {
 		var def = components[compName]
 		var data = storage[compName]
 		if (!data) throw `Unknown component: ${compName}.`
-		if (!def.multi) throw 'removeMultiComponent called on non-multi component'
+		if (!def.multi) throw new Error('removeMultiComponent called on non-multi component')
 
 		// removal implementations at end
 		removeMultiCompElement(entID, def, data, index)
