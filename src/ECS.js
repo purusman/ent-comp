@@ -522,7 +522,7 @@ function ECS() {
 	this.removeMultiComponent = function (entID, compName, index) {
 		var def = components[compName]
 		var data = storage[compName]
-		if (!data) throw `Unknown component: ${compName}.`
+		if (!data) throw new Error(`Unknown component: ${compName}.`)
 		if (!def.multi) throw new Error('removeMultiComponent called on non-multi component')
 
 		// removal implementations at end
