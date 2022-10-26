@@ -349,3 +349,32 @@ tape('State param has __id property', function (t) {
 
 
 
+tape('Overwrite a component', function (t) {
+	var ecs = new ECS()
+	var myEntity = 1
+
+	ecs.createComponent({
+		name: 'foo',
+		state: { aaa: 0 },
+	})
+	ecs.addComponent(myEntity, 'foo')
+	
+	t.equals(ecs.getState(myEntity, 'foo').counter, 0)
+	ecs.getState(myEntity, 'foo').aaa = 123
+
+	ecs.overwriteComponent('foo', {
+		name: 'foo',
+		state: { bbb: 456 },
+	})
+	var state = ecs.getState(myEntity, 'foo')
+
+	t.equals(state.counter, 123)
+	t.equals(state.hello, 456)
+
+	t.end()
+})
+
+
+
+
+

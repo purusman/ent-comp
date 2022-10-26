@@ -203,6 +203,81 @@ function ECS() {
 
 
 
+
+	/**
+	 * Overwrites an existing component with a new definition object, which
+	 * must have the same `name` property as the component it overwrites.
+	 * Otherwise identical to `createComponent`
+	 * 
+	 * ```js
+	 *   ecs.createComponent({
+	 *     name: 'foo',
+	 *     state: { aaa: 0 },
+	 *   })
+	 *   ecs.addComponent(myEntity, 'foo')
+	 *   ecs.getState(myEntity, 'foo').aaa = 123
+	 *   
+	 *   ecs.overwriteComponent('foo', {
+	 *	   name: 'foo',
+	 *	   state: { bbb: 456 },
+	 *	 })
+	 *   ecs.getState(myEntity, 'foo')  // { aaa:123, bbb:456 }
+	 * ```
+	 * 
+	*/
+	this.overwriteComponent = function (compName, compDefn) {
+		var def = components[compName]
+		if (!def) throw new Error(`Unknown component: ${compName}`)
+		if (!compDefn) throw new Error('Missing component definition')
+		if (def.name !== compDefn.name) throw new Error('Overwriting component must use the same name property.')
+
+		// rebuild definition object for monomorphism
+		var internalDef = {}
+		internalDef.name = compName
+		internalDef.multi = !!compDefn.multi
+		internalDef.order = isNaN(compDefn.order) ? 99 : compDefn.order
+		internalDef.state = compDefn.state || {}
+		internalDef.onAdd = compDefn.onAdd || null
+		internalDef.onRemove = compDefn.onRemove || null
+		internalDef.system = compDefn.system || null
+		internalDef.renderSystem = compDefn.renderSystem || null
+
+		// overwrite internal references to old component def
+		components[compName] = internalDef
+		storage[compName]._pendingMultiCleanup = false
+		storage[compName]._multiCleanupIDs = (internalDef.multi) ? [] : null
+
+		var si = systems.indexOf(compName)
+		if (internalDef.system && si < 0) systems.push(compName)
+		if (!internalDef.system && si >= 0) systems.splice(si, 1)
+		systems.sort((a, b) => components[a].order - components[b].order)
+
+		var ri = renderSystems.indexOf(compName)
+		if (internalDef.renderSystem && ri < 0) renderSystems.push(compName)
+		if (!internalDef.renderSystem && ri >= 0) renderSystems.splice(ri, 1)
+		renderSystems.sort((a, b) => components[a].order - components[b].order)
+
+		// for any existing entities with the component,
+		// add any default state properties they're missing
+		var baseState = internalDef.state
+		this.getStatesList(compName).forEach(state => {
+			for (var key in baseState) {
+				if (!(key in state)) state[key] = baseState[key]
+			}
+			// also call the new comp's add handler, if any
+			if (internalDef.onAdd) internalDef.onAdd(state.__id, state)
+		})
+
+
+		return compName
+	}
+
+
+
+
+
+
+
 	/**
 	 * Deletes the component definition with the given name. 
 	 * First removes the component from all entities that have it.
