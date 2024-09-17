@@ -339,11 +339,9 @@ function ECS() {
 			throw new Error(`Entity ${entID} already has component: ${compName}.`)
 		}
 
-		// create new component state object for this entity
-		var newState = Object.assign({}, { __id: entID }, def.state, state)
 
 		// just in case passed-in state object had an __id property
-		newState.__id = entID
+		state.__id = entID
 
 		// add to data store - for multi components, may already be present
 		if (def.multi) {
@@ -352,13 +350,13 @@ function ECS() {
 				statesArr = []
 				data.add(entID, statesArr)
 			}
-			statesArr.push(newState)
+			statesArr.push(state)
 		} else {
-			data.add(entID, newState)
+			data.add(entID, state)
 		}
 
 		// call handler and return
-		if (def.onAdd) def.onAdd(entID, newState)
+		if (def.onAdd) def.onAdd(entID, state)
 
 		return this
 	}
