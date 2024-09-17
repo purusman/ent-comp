@@ -339,6 +339,53 @@ function ECS() {
 			throw new Error(`Entity ${entID} already has component: ${compName}.`)
 		}
 
+		// create new component state object for this entity
+		var newState = Object.assign({}, { __id: entID }, def.state, state)
+
+		// just in case passed-in state object had an __id property
+		newState.__id = entID
+
+		// add to data store - for multi components, may already be present
+		if (def.multi) {
+			var statesArr = data.hash[entID]
+			if (!statesArr) {
+				statesArr = []
+				data.add(entID, statesArr)
+			}
+			statesArr.push(newState)
+		} else {
+			data.add(entID, newState)
+		}
+
+		// call handler and return
+		if (def.onAdd) def.onAdd(entID, newState)
+
+		return this
+	}
+
+	/**
+	 * Adds a component to an entity, optionally initializing the state object.
+	 * 
+	 * ```js
+	 * ecs.createComponent({
+	 * 	name: 'foo',
+	 * 	state: { val: 1 }
+	 * })
+	 * ecs.addComponent(id1, 'foo')             // use default state
+	 * ecs.addComponent(id2, 'foo', { val:2 })  // pass in state data
+	 * ```
+	*/
+  this.addComponent2 = function (entID, compName, state) {
+		var def = components[compName]
+		var data = storage[compName]
+		if (!data) throw new Error(`Unknown component: ${compName}.`)
+
+		// treat adding an existing (non-multi-) component as an error
+		if (data.hash[entID] && !def.multi) {
+			throw new Error(`Entity ${entID} already has component: ${compName}.`)
+		}
+
+		// create new component state object for this entity
 
 		// just in case passed-in state object had an __id property
 		state.__id = entID
